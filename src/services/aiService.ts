@@ -1,7 +1,7 @@
 import { ResumeData } from '../types/resume';
 import { generateLaTeXFromData } from '../utils/latexConverter';
 
-const API_KEY = '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';
+const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 export async function generateResumeWithAI(data: Partial<ResumeData>, templateId: string): Promise<{ data: ResumeData, latex: string }> {
@@ -33,7 +33,7 @@ export async function generateResumeWithAI(data: Partial<ResumeData>, templateId
                 'X-Title': 'Resume Builder AI',
             },
             body: JSON.stringify({
-                model: 'x-ai/grok-4.1-fast:free',
+                model: 'qwen/qwen-2.5-coder-32b-instruct:free',
                 messages: [
                     {
                         role: 'system',
@@ -120,7 +120,7 @@ export async function updateResumeWithAI(currentLatex: string, userRequest: stri
                 'X-Title': 'Resume Builder AI',
             },
             body: JSON.stringify({
-                model: 'x-ai/grok-4.1-fast:free',
+                model: 'qwen/qwen-2.5-coder-32b-instruct:free',
                 messages: [
                     {
                         role: 'system',
