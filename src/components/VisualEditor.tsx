@@ -14,6 +14,9 @@ export function VisualEditor() {
     addSkillCategory,
     updateSkillCategory,
     deleteSkillCategory,
+    addCustomSection,
+    updateCustomSection,
+    deleteCustomSection,
     settings,
   } = useResumeStore();
 
@@ -35,11 +38,10 @@ export function VisualEditor() {
                 type="text"
                 value={resumeData.personalInfo.name}
                 onChange={(e) => updatePersonalInfo({ name: e.target.value })}
-                className={`w-full px-3 py-2 border rounded-md ${
-                  isDark
-                    ? 'bg-gray-700 border-gray-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
+                className={`w-full px-3 py-2 border rounded-md ${isDark
+                  ? 'bg-gray-700 border-gray-600 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+                  }`}
                 placeholder="John Doe"
               />
             </div>
@@ -52,11 +54,10 @@ export function VisualEditor() {
                   type="email"
                   value={resumeData.personalInfo.email}
                   onChange={(e) => updatePersonalInfo({ email: e.target.value })}
-                  className={`w-full px-3 py-2 border rounded-md ${
-                    isDark
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-300 text-gray-900'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md ${isDark
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                    }`}
                   placeholder="john@example.com"
                 />
               </div>
@@ -68,11 +69,10 @@ export function VisualEditor() {
                   type="tel"
                   value={resumeData.personalInfo.phone}
                   onChange={(e) => updatePersonalInfo({ phone: e.target.value })}
-                  className={`w-full px-3 py-2 border rounded-md ${
-                    isDark
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-300 text-gray-900'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-md ${isDark
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                    }`}
                   placeholder="+1-555-123-4567"
                 />
               </div>
@@ -85,11 +85,10 @@ export function VisualEditor() {
                 type="text"
                 value={resumeData.personalInfo.location}
                 onChange={(e) => updatePersonalInfo({ location: e.target.value })}
-                className={`w-full px-3 py-2 border rounded-md ${
-                  isDark
-                    ? 'bg-gray-700 border-gray-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
+                className={`w-full px-3 py-2 border rounded-md ${isDark
+                  ? 'bg-gray-700 border-gray-600 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+                  }`}
                 placeholder="San Francisco, CA"
               />
             </div>
@@ -104,13 +103,84 @@ export function VisualEditor() {
                 value={resumeData.personalInfo.summary}
                 onChange={(e) => updatePersonalInfo({ summary: e.target.value.slice(0, 500) })}
                 rows={4}
-                className={`w-full px-3 py-2 border rounded-md ${
-                  isDark
-                    ? 'bg-gray-700 border-gray-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
+                className={`w-full px-3 py-2 border rounded-md ${isDark
+                  ? 'bg-gray-700 border-gray-600 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+                  }`}
                 placeholder="Brief overview of your professional experience and goals..."
               />
+            </div>
+
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                Social Profiles & Links
+              </label>
+              <div className="space-y-2">
+                {resumeData.personalInfo.profiles.map((profile, index) => (
+                  <div key={index} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={profile.network}
+                      onChange={(e) => {
+                        const newProfiles = [...resumeData.personalInfo.profiles];
+                        newProfiles[index].network = e.target.value;
+                        updatePersonalInfo({ profiles: newProfiles });
+                      }}
+                      placeholder="Network (e.g. LinkedIn)"
+                      className={`w-1/3 px-3 py-2 border rounded-md ${isDark
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                        }`}
+                    />
+                    <input
+                      type="text"
+                      value={profile.username}
+                      onChange={(e) => {
+                        const newProfiles = [...resumeData.personalInfo.profiles];
+                        newProfiles[index].username = e.target.value;
+                        updatePersonalInfo({ profiles: newProfiles });
+                      }}
+                      placeholder="Username/Text"
+                      className={`w-1/3 px-3 py-2 border rounded-md ${isDark
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                        }`}
+                    />
+                    <input
+                      type="text"
+                      value={profile.url}
+                      onChange={(e) => {
+                        const newProfiles = [...resumeData.personalInfo.profiles];
+                        newProfiles[index].url = e.target.value;
+                        updatePersonalInfo({ profiles: newProfiles });
+                      }}
+                      placeholder="URL"
+                      className={`flex-1 px-3 py-2 border rounded-md ${isDark
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                        }`}
+                    />
+                    <button
+                      onClick={() => {
+                        const newProfiles = resumeData.personalInfo.profiles.filter((_, i) => i !== index);
+                        updatePersonalInfo({ profiles: newProfiles });
+                      }}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => {
+                    const newProfiles = [...resumeData.personalInfo.profiles, { network: '', username: '', url: '' }];
+                    updatePersonalInfo({ profiles: newProfiles });
+                  }}
+                  className={`text-sm ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                >
+                  + Add Profile Link
+                </button>
+              </div>
             </div>
           </div>
         </section>
@@ -162,22 +232,20 @@ export function VisualEditor() {
                       value={exp.jobTitle}
                       onChange={(e) => updateExperience(exp.id, { jobTitle: e.target.value })}
                       placeholder="Job Title"
-                      className={`px-3 py-2 border rounded-md ${
-                        isDark
-                          ? 'bg-gray-700 border-gray-600 text-white'
-                          : 'bg-white border-gray-300 text-gray-900'
-                      }`}
+                      className={`px-3 py-2 border rounded-md ${isDark
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                        }`}
                     />
                     <input
                       type="text"
                       value={exp.company}
                       onChange={(e) => updateExperience(exp.id, { company: e.target.value })}
                       placeholder="Company"
-                      className={`px-3 py-2 border rounded-md ${
-                        isDark
-                          ? 'bg-gray-700 border-gray-600 text-white'
-                          : 'bg-white border-gray-300 text-gray-900'
-                      }`}
+                      className={`px-3 py-2 border rounded-md ${isDark
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                        }`}
                     />
                   </div>
 
@@ -186,11 +254,10 @@ export function VisualEditor() {
                     value={exp.location}
                     onChange={(e) => updateExperience(exp.id, { location: e.target.value })}
                     placeholder="Location"
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      isDark
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md ${isDark
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
+                      }`}
                   />
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -199,11 +266,10 @@ export function VisualEditor() {
                       value={exp.startDate}
                       onChange={(e) => updateExperience(exp.id, { startDate: e.target.value })}
                       placeholder="Start Date"
-                      className={`px-3 py-2 border rounded-md ${
-                        isDark
-                          ? 'bg-gray-700 border-gray-600 text-white'
-                          : 'bg-white border-gray-300 text-gray-900'
-                      }`}
+                      className={`px-3 py-2 border rounded-md ${isDark
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                        }`}
                     />
                     <div className="flex items-center gap-2">
                       <input
@@ -212,11 +278,10 @@ export function VisualEditor() {
                         onChange={(e) => updateExperience(exp.id, { endDate: e.target.value })}
                         disabled={exp.current}
                         placeholder="End Date"
-                        className={`flex-1 px-3 py-2 border rounded-md ${
-                          isDark
-                            ? 'bg-gray-700 border-gray-600 text-white disabled:opacity-50'
-                            : 'bg-white border-gray-300 text-gray-900 disabled:opacity-50'
-                        }`}
+                        className={`flex-1 px-3 py-2 border rounded-md ${isDark
+                          ? 'bg-gray-700 border-gray-600 text-white disabled:opacity-50'
+                          : 'bg-white border-gray-300 text-gray-900 disabled:opacity-50'
+                          }`}
                       />
                       <label className="flex items-center whitespace-nowrap">
                         <input
@@ -247,11 +312,10 @@ export function VisualEditor() {
                             updateExperience(exp.id, { bulletPoints: newBullets });
                           }}
                           placeholder={`Achievement ${bIndex + 1}`}
-                          className={`flex-1 px-3 py-2 border rounded-md ${
-                            isDark
-                              ? 'bg-gray-700 border-gray-600 text-white'
-                              : 'bg-white border-gray-300 text-gray-900'
-                          }`}
+                          className={`flex-1 px-3 py-2 border rounded-md ${isDark
+                            ? 'bg-gray-700 border-gray-600 text-white'
+                            : 'bg-white border-gray-300 text-gray-900'
+                            }`}
                         />
                         <button
                           onClick={() => {
@@ -318,22 +382,20 @@ export function VisualEditor() {
                     value={edu.degree}
                     onChange={(e) => updateEducation(edu.id, { degree: e.target.value })}
                     placeholder="Degree (e.g., Bachelor of Science in Computer Science)"
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      isDark
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md ${isDark
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
+                      }`}
                   />
                   <input
                     type="text"
                     value={edu.institution}
                     onChange={(e) => updateEducation(edu.id, { institution: e.target.value })}
                     placeholder="Institution"
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      isDark
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md ${isDark
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
+                      }`}
                   />
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <input
@@ -341,33 +403,30 @@ export function VisualEditor() {
                       value={edu.location}
                       onChange={(e) => updateEducation(edu.id, { location: e.target.value })}
                       placeholder="Location"
-                      className={`px-3 py-2 border rounded-md ${
-                        isDark
-                          ? 'bg-gray-700 border-gray-600 text-white'
-                          : 'bg-white border-gray-300 text-gray-900'
-                      }`}
+                      className={`px-3 py-2 border rounded-md ${isDark
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                        }`}
                     />
                     <input
                       type="month"
                       value={edu.graduationDate}
                       onChange={(e) => updateEducation(edu.id, { graduationDate: e.target.value })}
                       placeholder="Graduation Date"
-                      className={`px-3 py-2 border rounded-md ${
-                        isDark
-                          ? 'bg-gray-700 border-gray-600 text-white'
-                          : 'bg-white border-gray-300 text-gray-900'
-                      }`}
+                      className={`px-3 py-2 border rounded-md ${isDark
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                        }`}
                     />
                     <input
                       type="text"
                       value={edu.gpa || ''}
                       onChange={(e) => updateEducation(edu.id, { gpa: e.target.value })}
                       placeholder="GPA (optional)"
-                      className={`px-3 py-2 border rounded-md ${
-                        isDark
-                          ? 'bg-gray-700 border-gray-600 text-white'
-                          : 'bg-white border-gray-300 text-gray-900'
-                      }`}
+                      className={`px-3 py-2 border rounded-md ${isDark
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                        }`}
                     />
                   </div>
                 </div>
@@ -397,11 +456,10 @@ export function VisualEditor() {
                     value={skillCat.category}
                     onChange={(e) => updateSkillCategory(skillCat.id, { category: e.target.value })}
                     placeholder="Category (e.g., Programming Languages)"
-                    className={`w-1/3 px-3 py-2 border rounded-md ${
-                      isDark
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
+                    className={`w-1/3 px-3 py-2 border rounded-md ${isDark
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
+                      }`}
                   />
                   <input
                     type="text"
@@ -412,17 +470,92 @@ export function VisualEditor() {
                       })
                     }
                     placeholder="Skills (comma-separated)"
-                    className={`flex-1 px-3 py-2 border rounded-md ${
-                      isDark
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
+                    className={`flex-1 px-3 py-2 border rounded-md ${isDark
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
+                      }`}
                   />
                   <button
                     onClick={() => deleteSkillCategory(skillCat.id)}
                     className="text-red-600 hover:text-red-700"
                   >
                     <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Custom Sections */}
+        <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow p-6`}>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Additional Sections</h2>
+            <button
+              onClick={() => addCustomSection({ title: '', items: [''] })}
+              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Section
+            </button>
+          </div>
+
+          <div className="space-y-6">
+            {resumeData.customSections.map((section) => (
+              <div key={section.id} className={`p-4 border rounded-md ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                <div className="flex items-start justify-between mb-4">
+                  <input
+                    type="text"
+                    value={section.title}
+                    onChange={(e) => updateCustomSection(section.id, { title: e.target.value })}
+                    placeholder="Section Title (e.g., Hobbies, Awards)"
+                    className={`text-lg font-semibold bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none ${isDark ? 'text-white' : 'text-gray-900'
+                      }`}
+                  />
+                  <button
+                    onClick={() => deleteCustomSection(section.id)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {section.items.map((item, index) => (
+                    <div key={index} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={item}
+                        onChange={(e) => {
+                          const newItems = [...section.items];
+                          newItems[index] = e.target.value;
+                          updateCustomSection(section.id, { items: newItems });
+                        }}
+                        placeholder={`Item ${index + 1}`}
+                        className={`flex-1 px-3 py-2 border rounded-md ${isDark
+                          ? 'bg-gray-700 border-gray-600 text-white'
+                          : 'bg-white border-gray-300 text-gray-900'
+                          }`}
+                      />
+                      <button
+                        onClick={() => {
+                          const newItems = section.items.filter((_, i) => i !== index);
+                          updateCustomSection(section.id, { items: newItems });
+                        }}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => {
+                      const newItems = [...section.items, ''];
+                      updateCustomSection(section.id, { items: newItems });
+                    }}
+                    className={`text-sm ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                  >
+                    + Add item
                   </button>
                 </div>
               </div>

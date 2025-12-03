@@ -16,10 +16,7 @@ function unescapeLaTeX(text: string): string {
     .replace(/\\textasciicircum\{\}/g, '^');
 }
 
-function extractBetweenBraces(text: string): string {
-  const match = text.match(/\{([^}]*)\}/);
-  return match ? match[1] : text;
-}
+
 
 function extractSection(latex: string, sectionName: string): string {
   const regex = new RegExp(`\\\\section\\*\\{${sectionName}\\}([\\s\\S]*?)(?=\\\\section\\*|\\\\end\\{document\\}|$)`, 'i');
@@ -27,9 +24,9 @@ function extractSection(latex: string, sectionName: string): string {
   return match ? match[1].trim() : '';
 }
 
-function parseContactInfo(latex: string): { email: string; phone: string; location: string } {
+function parseContactInfo(latex: string): { email: string; phone: string; location: string; profiles: { network: string; username: string; url: string }[] } {
   const centerMatch = latex.match(/\\begin\{center\}([\s\S]*?)\\end\{center\}/);
-  if (!centerMatch) return { email: '', phone: '', location: '' };
+  if (!centerMatch) return { email: '', phone: '', location: '', profiles: [] };
 
   const content = centerMatch[1];
   const lines = content.split('\\\\');
@@ -37,24 +34,52 @@ function parseContactInfo(latex: string): { email: string; phone: string; locati
   let email = '';
   let phone = '';
   let location = '';
+  const profiles: { network: string; username: string; url: string }[] = [];
 
   for (const line of lines) {
     if (line.includes('$|$')) {
-      const parts = line.split('$|$').map(p => unescapeLaTeX(p.trim()));
+      const parts = line.split('$|$').map(p => p.trim());
 
       for (const part of parts) {
-        if (part.includes('@')) {
-          email = part;
-        } else if (/[\d\-\(\)\+]/.test(part)) {
-          phone = part;
-        } else if (part && !part.includes('bfseries') && !part.includes('Huge')) {
-          location = part;
+        const unescapedPart = unescapeLaTeX(part);
+
+        if (part.includes('\\href')) {
+          const hrefMatch = part.match(/\\href\{([^}]+)\}\{([^}]+)\}/);
+          if (hrefMatch) {
+            const url = hrefMatch[1];
+            const text = unescapeLaTeX(hrefMatch[2]);
+
+            if (url.startsWith('mailto:')) {
+              email = text;
+            } else if (url.startsWith('tel:')) {
+              phone = text;
+            } else {
+              // It's a profile link
+              let network = 'Website';
+              if (url.includes('linkedin')) network = 'LinkedIn';
+              else if (url.includes('github')) network = 'GitHub';
+              else if (url.includes('twitter') || url.includes('x.com')) network = 'Twitter';
+              else if (url.includes('portfolio')) network = 'Portfolio';
+
+              profiles.push({
+                network,
+                username: text,
+                url
+              });
+            }
+          }
+        } else if (unescapedPart.includes('@')) {
+          email = unescapedPart;
+        } else if (/[\d\-\(\)\+]/.test(unescapedPart) && unescapedPart.length > 6) {
+          phone = unescapedPart;
+        } else if (unescapedPart && !unescapedPart.includes('bfseries') && !unescapedPart.includes('Huge')) {
+          location = unescapedPart;
         }
       }
     }
   }
 
-  return { email, phone, location };
+  return { email, phone, location, profiles };
 }
 
 function parseName(latex: string): string {
@@ -330,7 +355,7 @@ function parseLanguages(langsSection: string): LanguageItem[] {
 export function parseLaTeXToJSON(latex: string): ResumeData {
   try {
     const name = parseName(latex);
-    const { email, phone, location } = parseContactInfo(latex);
+    const { email, phone, location, profiles } = parseContactInfo(latex);
     const summarySection = extractSection(latex, 'Professional Summary');
     const summary = unescapeLaTeX(summarySection.replace(/\n/g, ' ').trim());
 
@@ -359,6 +384,7 @@ export function parseLaTeXToJSON(latex: string): ResumeData {
         phone,
         location,
         summary,
+        profiles,
       },
       experience,
       education,
@@ -366,6 +392,7 @@ export function parseLaTeXToJSON(latex: string): ResumeData {
       projects,
       certifications,
       languages,
+      customSections: [], // Initialize empty to prevent crashes
     };
   } catch (error) {
     console.error('Error parsing LaTeX:', error);

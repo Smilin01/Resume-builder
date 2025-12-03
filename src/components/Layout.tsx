@@ -1,12 +1,14 @@
 import { useResumeStore } from '../store/resumeStore';
 import { FileText, Code, Eye, Save, Download, Settings, Moon, Sun, LayoutTemplate } from 'lucide-react';
+import { ToastContainer, useToast } from './Toast';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
 export function Layout({ children }: LayoutProps) {
-  const { currentTab, setCurrentTab, syncMetadata, settings, setSettings } = useResumeStore();
+  const { currentTab, setCurrentTab, syncMetadata, settings, setSettings, pdfState, resumeData } = useResumeStore();
+  const { toasts, showToast, removeToast } = useToast();
 
   const getSyncIcon = () => {
     switch (syncMetadata.syncStatus) {
@@ -23,6 +25,53 @@ export function Layout({ children }: LayoutProps) {
 
   const toggleTheme = () => {
     setSettings({ theme: settings.theme === 'light' ? 'dark' : 'light' });
+  };
+
+  const handleDownloadPDF = async () => {
+    // Check if PDF is available
+    if (!pdfState.url) {
+      showToast('No PDF available. Please wait for compilation or add content to your resume.', 'info');
+      return;
+    }
+
+    // Check if PDF is currently compiling
+    if (pdfState.isCompiling) {
+      showToast('PDF is currently compiling. Please wait a moment...', 'info');
+      return;
+    }
+
+    try {
+      // Fetch the PDF blob from the URL
+      const response = await fetch(pdfState.url);
+      const blob = await response.blob();
+
+      // Generate filename from user's name or use default
+      const userName = resumeData.personalInfo.name.trim();
+      const filename = userName
+        ? `${userName.replace(/\s+/g, '_')}_Resume.pdf`
+        : 'Resume.pdf';
+
+      // Create download link
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl);
+
+      // Show success feedback
+      showToast(`✅ Resume downloaded as ${filename}`, 'success');
+      console.log(`✅ PDF downloaded successfully as: ${filename}`);
+    } catch (error) {
+      console.error('Download error:', error);
+      showToast('Failed to download PDF. Please try again.', 'error');
+    }
   };
 
   return (
@@ -42,12 +91,12 @@ export function Layout({ children }: LayoutProps) {
                 <button
                   onClick={() => setCurrentTab('templates')}
                   className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${currentTab === 'templates'
-                      ? settings.theme === 'dark'
-                        ? 'bg-gray-900 text-white border-t border-x border-gray-700'
-                        : 'bg-gray-50 text-gray-900 border-t border-x border-gray-300'
-                      : settings.theme === 'dark'
-                        ? 'text-gray-400 hover:text-gray-200'
-                        : 'text-gray-500 hover:text-gray-700'
+                    ? settings.theme === 'dark'
+                      ? 'bg-gray-900 text-white border-t border-x border-gray-700'
+                      : 'bg-gray-50 text-gray-900 border-t border-x border-gray-300'
+                    : settings.theme === 'dark'
+                      ? 'text-gray-400 hover:text-gray-200'
+                      : 'text-gray-500 hover:text-gray-700'
                     }`}
                 >
                   <LayoutTemplate className="inline h-4 w-4 mr-2" />
@@ -56,12 +105,12 @@ export function Layout({ children }: LayoutProps) {
                 <button
                   onClick={() => setCurrentTab('visual')}
                   className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${currentTab === 'visual'
-                      ? settings.theme === 'dark'
-                        ? 'bg-gray-900 text-white border-t border-x border-gray-700'
-                        : 'bg-gray-50 text-gray-900 border-t border-x border-gray-300'
-                      : settings.theme === 'dark'
-                        ? 'text-gray-400 hover:text-gray-200'
-                        : 'text-gray-500 hover:text-gray-700'
+                    ? settings.theme === 'dark'
+                      ? 'bg-gray-900 text-white border-t border-x border-gray-700'
+                      : 'bg-gray-50 text-gray-900 border-t border-x border-gray-300'
+                    : settings.theme === 'dark'
+                      ? 'text-gray-400 hover:text-gray-200'
+                      : 'text-gray-500 hover:text-gray-700'
                     }`}
                 >
                   <FileText className="inline h-4 w-4 mr-2" />
@@ -70,12 +119,12 @@ export function Layout({ children }: LayoutProps) {
                 <button
                   onClick={() => setCurrentTab('code')}
                   className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${currentTab === 'code'
-                      ? settings.theme === 'dark'
-                        ? 'bg-gray-900 text-white border-t border-x border-gray-700'
-                        : 'bg-gray-50 text-gray-900 border-t border-x border-gray-300'
-                      : settings.theme === 'dark'
-                        ? 'text-gray-400 hover:text-gray-200'
-                        : 'text-gray-500 hover:text-gray-700'
+                    ? settings.theme === 'dark'
+                      ? 'bg-gray-900 text-white border-t border-x border-gray-700'
+                      : 'bg-gray-50 text-gray-900 border-t border-x border-gray-300'
+                    : settings.theme === 'dark'
+                      ? 'text-gray-400 hover:text-gray-200'
+                      : 'text-gray-500 hover:text-gray-700'
                     }`}
                 >
                   <Code className="inline h-4 w-4 mr-2" />
@@ -84,12 +133,12 @@ export function Layout({ children }: LayoutProps) {
                 <button
                   onClick={() => setCurrentTab('preview')}
                   className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${currentTab === 'preview'
-                      ? settings.theme === 'dark'
-                        ? 'bg-gray-900 text-white border-t border-x border-gray-700'
-                        : 'bg-gray-50 text-gray-900 border-t border-x border-gray-300'
-                      : settings.theme === 'dark'
-                        ? 'text-gray-400 hover:text-gray-200'
-                        : 'text-gray-500 hover:text-gray-700'
+                    ? settings.theme === 'dark'
+                      ? 'bg-gray-900 text-white border-t border-x border-gray-700'
+                      : 'bg-gray-50 text-gray-900 border-t border-x border-gray-300'
+                    : settings.theme === 'dark'
+                      ? 'text-gray-400 hover:text-gray-200'
+                      : 'text-gray-500 hover:text-gray-700'
                     }`}
                 >
                   <Eye className="inline h-4 w-4 mr-2" />
@@ -110,8 +159,8 @@ export function Layout({ children }: LayoutProps) {
 
               <button
                 className={`p-2 rounded-lg ${settings.theme === 'dark'
-                    ? 'hover:bg-gray-700 text-gray-300'
-                    : 'hover:bg-gray-100 text-gray-600'
+                  ? 'hover:bg-gray-700 text-gray-300'
+                  : 'hover:bg-gray-100 text-gray-600'
                   }`}
                 title="Save Resume"
               >
@@ -119,11 +168,21 @@ export function Layout({ children }: LayoutProps) {
               </button>
 
               <button
-                className={`p-2 rounded-lg ${settings.theme === 'dark'
-                    ? 'hover:bg-gray-700 text-gray-300'
-                    : 'hover:bg-gray-100 text-gray-600'
+                onClick={handleDownloadPDF}
+                disabled={!pdfState.url || pdfState.isCompiling}
+                className={`p-2 rounded-lg transition-all ${!pdfState.url || pdfState.isCompiling
+                  ? 'opacity-50 cursor-not-allowed'
+                  : settings.theme === 'dark'
+                    ? 'hover:bg-gray-700 text-gray-300 hover:scale-105'
+                    : 'hover:bg-gray-100 text-gray-600 hover:scale-105'
                   }`}
-                title="Download PDF"
+                title={
+                  pdfState.isCompiling
+                    ? 'PDF is compiling...'
+                    : !pdfState.url
+                      ? 'No PDF available'
+                      : 'Download PDF'
+                }
               >
                 <Download className="h-5 w-5" />
               </button>
@@ -131,8 +190,8 @@ export function Layout({ children }: LayoutProps) {
               <button
                 onClick={toggleTheme}
                 className={`p-2 rounded-lg ${settings.theme === 'dark'
-                    ? 'hover:bg-gray-700 text-gray-300'
-                    : 'hover:bg-gray-100 text-gray-600'
+                  ? 'hover:bg-gray-700 text-gray-300'
+                  : 'hover:bg-gray-100 text-gray-600'
                   }`}
                 title="Toggle Theme"
               >
@@ -141,8 +200,8 @@ export function Layout({ children }: LayoutProps) {
 
               <button
                 className={`p-2 rounded-lg ${settings.theme === 'dark'
-                    ? 'hover:bg-gray-700 text-gray-300'
-                    : 'hover:bg-gray-100 text-gray-600'
+                  ? 'hover:bg-gray-700 text-gray-300'
+                  : 'hover:bg-gray-100 text-gray-600'
                   }`}
                 title="Settings"
               >
@@ -154,6 +213,9 @@ export function Layout({ children }: LayoutProps) {
       </nav>
 
       <main className="h-[calc(100vh-4rem)]">{children}</main>
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

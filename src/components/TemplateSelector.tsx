@@ -7,6 +7,7 @@ import { FileText, Check, AlertTriangle } from 'lucide-react';
 export function TemplateSelector() {
     const { settings, setSettings, resumeData, setResumeData, setLatexCode } = useResumeStore();
     const [selectedTemplate, setSelectedTemplate] = useState(settings.template || 'classic');
+    const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
     const isDark = settings.theme === 'dark';
 
     const handleTemplateSelect = (templateId: string) => {
@@ -80,8 +81,34 @@ export function TemplateSelector() {
               aspect-[8.5/11] rounded-t-lg flex items-center justify-center overflow-hidden relative
               ${isDark ? 'bg-gray-700' : 'bg-gray-100'}
             `}>
-                            {/* Placeholder for actual preview image */}
-                            <FileText size={64} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
+                            {/* Loading skeleton */}
+                            {loadingImages[template.id] !== false && (
+                                <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-600 dark:to-gray-700" />
+                            )}
+
+                            {/* Template preview image */}
+                            <img
+                                src={template.preview}
+                                alt={`${template.name} preview`}
+                                className={`w-full h-full object-cover object-top transition-all duration-300 group-hover:scale-105 ${loadingImages[template.id] === false ? 'opacity-100' : 'opacity-0'
+                                    }`}
+                                onLoad={() => {
+                                    setLoadingImages(prev => ({ ...prev, [template.id]: false }));
+                                }}
+                                onError={(e) => {
+                                    // Fallback to icon if image fails to load
+                                    setLoadingImages(prev => ({ ...prev, [template.id]: false }));
+                                    e.currentTarget.style.display = 'none';
+                                    const fallback = e.currentTarget.nextElementSibling;
+                                    if (fallback) {
+                                        (fallback as HTMLElement).style.display = 'flex';
+                                    }
+                                }}
+                            />
+                            {/* Fallback icon (hidden by default) */}
+                            <div className="hidden w-full h-full items-center justify-center">
+                                <FileText size={64} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
+                            </div>
 
                             {/* Hover Overlay */}
                             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-200" />

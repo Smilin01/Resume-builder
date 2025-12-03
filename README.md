@@ -33,15 +33,14 @@ A modern, full-featured resume builder that combines visual form-based editing w
 - Lucide React for icons
 
 ### Backend
-- Supabase (PostgreSQL database)
-- Supabase Edge Functions (Deno runtime)
-- External LaTeX compilation service
+- Supabase (PostgreSQL database) - for resume storage
+- YtoTech LaTeX-on-HTTP API - for PDF compilation (no authentication required)
 
 ## Getting Started
 
 ### Prerequisites
 - Node.js 18+ and npm
-- Supabase account
+- Supabase account (optional - only needed for resume storage)
 
 ### Installation
 
@@ -50,25 +49,25 @@ A modern, full-featured resume builder that combines visual form-based editing w
 npm install
 ```
 
-2. Set up environment variables:
+2. Set up environment variables (optional - only for database features):
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and add your Supabase credentials:
+Edit `.env` and add your Supabase credentials if you want resume storage:
 ```
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-3. The database schema and Edge Function are already deployed to your Supabase project.
+**Note:** The LaTeX compilation works without any API keys! The YtoTech API is fully public.
 
-4. Start the development server:
+3. Start the development server:
 ```bash
 npm run dev
 ```
 
-5. Build for production:
+4. Build for production:
 ```bash
 npm run build
 ```
@@ -100,9 +99,11 @@ The bidirectional sync works as follows:
 ### PDF Compilation Pipeline
 1. LaTeX code changes trigger compilation after 2-second debounce
 2. Code hash is generated to prevent duplicate compilations
-3. Edge Function sends LaTeX to external compilation service
-4. PDF blob is received and displayed in preview panel
-5. Compilation errors are captured and displayed
+3. Request sent to YtoTech LaTeX-on-HTTP API with LaTeX source
+4. API compiles using pdflatex (configurable to xelatex, lualatex, etc.)
+5. PDF blob is received and displayed in preview panel
+6. Compilation time is tracked and displayed to user
+7. Compilation errors are parsed from logs and displayed with line numbers
 
 ### Data Flow
 ```
@@ -129,23 +130,22 @@ src/
 │   ├── Layout.tsx              # Main layout with navigation
 │   ├── VisualEditor.tsx        # Form-based editor
 │   ├── CodeEditor.tsx          # Monaco LaTeX editor
-│   └── PDFPreview.tsx          # PDF viewer
+│   ├── PDFPreview.tsx          # PDF viewer with compilation time
+│   └── TemplateSelector.tsx    # Template selection UI
 ├── hooks/
 │   ├── useSyncSystem.ts        # Bidirectional sync logic
-│   └── usePDFCompiler.ts       # PDF compilation hook
+│   └── usePDFCompiler.ts       # PDF compilation with YtoTech API
 ├── store/
 │   └── resumeStore.ts          # Zustand state management
 ├── types/
 │   └── resume.ts               # TypeScript interfaces
 ├── utils/
 │   ├── latexConverter.ts       # JSON → LaTeX converter
-│   └── latexParser.ts          # LaTeX → JSON parser
+│   ├── latexParser.ts          # LaTeX → JSON parser
+│   └── latexApi.ts             # YtoTech API utilities
+├── data/
+│   └── templates.ts            # LaTeX resume templates
 └── App.tsx                     # Main app component
-
-supabase/
-└── functions/
-    └── compile-latex/
-        └── index.ts            # Edge Function for PDF compilation
 ```
 
 ## Key Implementation Details
@@ -172,12 +172,14 @@ The `resumes` table stores:
 - `pdf_cache_key`: SHA256 hash for cache invalidation
 - Timestamps for creation, updates, and compilation
 
-### Edge Function
-The `compile-latex` function:
-- Accepts LaTeX code via POST request
-- Forwards to external compilation service
-- Returns compiled PDF or error messages
-- Handles CORS for browser requests
+### LaTeX Compilation API
+The application uses the **YtoTech LaTeX-on-HTTP API** for PDF compilation:
+- **Endpoint**: `https://latex.ytotech.com/builds/sync`
+- **Authentication**: None required (fully public API)
+- **Compilers**: Supports pdflatex, xelatex, lualatex, and more
+- **Documentation**: https://github.com/YtoTech/latex-on-http
+
+For details on the API migration, see [LATEX_API_MIGRATION.md](./LATEX_API_MIGRATION.md)
 
 ## Current Limitations & Future Enhancements
 
@@ -185,15 +187,17 @@ The `compile-latex` function:
 - ✅ Core visual editor with all major sections
 - ✅ Monaco code editor with LaTeX support
 - ✅ Bidirectional sync system
-- ✅ PDF compilation pipeline
+- ✅ PDF compilation pipeline with YtoTech API
+- ✅ Compilation time tracking and display
+- ✅ Multiple LaTeX templates (Classic, Modern Compact, Developer)
+- ✅ Enhanced error handling with line numbers
 - ✅ Database persistence
 - ✅ Dark/light theme toggle
 - ✅ Responsive layout
 
 ### Future Enhancements
-- 📝 Additional sections: Projects, Certifications, Languages (forms ready, need UI)
+- 📝 Compiler selection UI (pdflatex, xelatex, lualatex)
 - 📝 Drag-and-drop reordering
-- 📝 Multiple LaTeX templates
 - 📝 Import from existing PDF/DOCX
 - 📝 Export to multiple formats
 - 📝 Version history and rollback
@@ -201,6 +205,8 @@ The `compile-latex` function:
 - 📝 AI-powered content suggestions
 - 📝 Form validation with Zod
 - 📝 Auto-save indicator
+- 📝 Multi-file LaTeX support (split resume into sections)
+- 📝 Image upload for profile pictures
 
 ## Development
 

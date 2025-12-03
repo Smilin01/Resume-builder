@@ -4,6 +4,11 @@ export interface PersonalInfo {
   phone: string;
   location: string;
   summary: string;
+  profiles: {
+    network: string;
+    username: string;
+    url: string;
+  }[];
 }
 
 export interface ExperienceItem {
@@ -56,6 +61,12 @@ export interface LanguageItem {
   proficiency: 'Native' | 'Fluent' | 'Professional' | 'Intermediate' | 'Basic';
 }
 
+export interface CustomSection {
+  id: string;
+  title: string;
+  items: string[];
+}
+
 export interface ResumeData {
   personalInfo: PersonalInfo;
   experience: ExperienceItem[];
@@ -64,6 +75,7 @@ export interface ResumeData {
   projects: ProjectItem[];
   certifications: CertificationItem[];
   languages: LanguageItem[];
+  customSections: CustomSection[];
 }
 
 export type EditSource = 'visual' | 'code' | 'none';
@@ -84,6 +96,7 @@ export interface PDFState {
   url: string | null;
   isCompiling: boolean;
   errors: CompilationError[];
+  compilationTime?: number; // Time in milliseconds
 }
 
 export interface EditorSettings {

@@ -46,6 +46,7 @@ const classicDummyData: ResumeData = {
         phone: '+1 (555) 123-4567',
         location: 'New York, NY',
         summary: 'Experienced Business Analyst with over 5 years of experience in data analysis, project management, and strategic planning. Proven track record of improving operational efficiency and driving business growth through data-driven insights.',
+        profiles: [],
     },
     experience: [
         {
@@ -108,7 +109,8 @@ const classicDummyData: ResumeData = {
     ],
     projects: [],
     certifications: [],
-    languages: []
+    languages: [],
+    customSections: []
 };
 
 const modernDummyData: ResumeData = {
@@ -118,6 +120,7 @@ const modernDummyData: ResumeData = {
         phone: '+1 (555) 987-6543',
         location: 'San Francisco, CA',
         summary: 'Creative UX/UI Designer with a passion for building user-centric digital products. Expertise in user research, wireframing, prototyping, and visual design. Dedicated to creating seamless and enjoyable user experiences.',
+        profiles: [],
     },
     experience: [
         {
@@ -180,7 +183,8 @@ const modernDummyData: ResumeData = {
         }
     ],
     certifications: [],
-    languages: []
+    languages: [],
+    customSections: []
 };
 
 const developerDummyData: ResumeData = {
@@ -190,6 +194,18 @@ const developerDummyData: ResumeData = {
         phone: '+1 (555) 555-0199',
         location: 'Seattle, WA',
         summary: 'Full Stack Developer with 4+ years of experience building scalable web applications. Proficient in JavaScript, React, Node.js, and cloud technologies. Passionate about writing clean, maintainable code and solving complex problems.',
+        profiles: [
+            {
+                network: 'GitHub',
+                username: 'alexcoder',
+                url: 'https://github.com/alexcoder'
+            },
+            {
+                network: 'LinkedIn',
+                username: 'alexcoder',
+                url: 'https://linkedin.com/in/alexcoder'
+            }
+        ],
     },
     experience: [
         {
@@ -272,7 +288,8 @@ const developerDummyData: ResumeData = {
             link: 'https://aws.amazon.com/verification'
         }
     ],
-    languages: []
+    languages: [],
+    customSections: []
 };
 
 // --- Templates ---
@@ -321,6 +338,12 @@ const classicTemplate: ResumeTemplate = {
             if (personalInfo.email) contacts.push(`\\href{mailto:${escapeLaTeX(personalInfo.email)}}{${escapeLaTeX(personalInfo.email)}}`);
             if (personalInfo.phone) contacts.push(escapeLaTeX(personalInfo.phone));
             if (personalInfo.location) contacts.push(escapeLaTeX(personalInfo.location));
+
+            if (personalInfo.profiles && personalInfo.profiles.length > 0) {
+                personalInfo.profiles.forEach(profile => {
+                    contacts.push(`\\href{${escapeLaTeX(profile.url)}}{${escapeLaTeX(profile.username || profile.network)}}`);
+                });
+            }
 
             if (contacts.length > 0) {
                 latex += contacts.join(' $|$ ') + ' \\\\\\n';
@@ -412,6 +435,23 @@ ${escapeLaTeX(personalInfo.summary)}
 `;
         }
 
+        // Custom Sections
+        if (data.customSections && data.customSections.length > 0) {
+            data.customSections.forEach((section) => {
+                latex += `\\section{${escapeLaTeX(section.title)}}
+\\begin{itemize}[nosep,after=\\strut, leftmargin=1em, itemsep=3pt,label=--]
+`;
+                section.items.forEach((item) => {
+                    if (item.trim()) {
+                        latex += `\\item ${escapeLaTeX(item)}\n`;
+                    }
+                });
+                latex += `\\end{itemize}
+
+`;
+            });
+        }
+
         latex += `\\end{document}`;
         return latex;
     }
@@ -464,6 +504,12 @@ const modernCompactTemplate: ResumeTemplate = {
             if (personalInfo.location) contacts.push(escapeLaTeX(personalInfo.location));
             if (personalInfo.email) contacts.push(`\\href{mailto:${escapeLaTeX(personalInfo.email)}}{${escapeLaTeX(personalInfo.email)}}`);
             if (personalInfo.phone) contacts.push(`\\href{tel:${escapeLaTeX(personalInfo.phone)}}{${escapeLaTeX(personalInfo.phone)}}`);
+
+            if (personalInfo.profiles && personalInfo.profiles.length > 0) {
+                personalInfo.profiles.forEach(profile => {
+                    contacts.push(`\\href{${escapeLaTeX(profile.url)}}{${escapeLaTeX(profile.username || profile.network)}}`);
+                });
+            }
 
             if (contacts.length > 0) {
                 latex += '    ' + contacts.join(' $|$ ') + '\n';
@@ -553,6 +599,23 @@ ${escapeLaTeX(proj.description)}
             });
         }
 
+        // Custom Sections
+        if (data.customSections && data.customSections.length > 0) {
+            data.customSections.forEach((section) => {
+                latex += `\\section{${escapeLaTeX(section.title)}}
+\\begin{itemize}
+`;
+                section.items.forEach((item) => {
+                    if (item.trim()) {
+                        latex += `    \\item ${escapeLaTeX(item)}\n`;
+                    }
+                });
+                latex += `\\end{itemize}
+
+`;
+            });
+        }
+
         latex += `\\end{document}`;
         return latex;
     }
@@ -601,6 +664,12 @@ const developerTemplate: ResumeTemplate = {
             const links = [];
             if (personalInfo.email) links.push(`Email: \\href{mailto:${escapeLaTeX(personalInfo.email)}}{${escapeLaTeX(personalInfo.email)}}`);
             if (personalInfo.phone) links.push(`Mobile: ${escapeLaTeX(personalInfo.phone)}`);
+
+            if (personalInfo.profiles && personalInfo.profiles.length > 0) {
+                personalInfo.profiles.forEach(profile => {
+                    links.push(`${escapeLaTeX(profile.network)}: \\href{${escapeLaTeX(profile.url)}}{${escapeLaTeX(profile.username)}}`);
+                });
+            }
 
             if (links.length > 0) {
                 latex += '  & ' + links.join(' $|$ ') + ' \\\\\n';
@@ -723,6 +792,23 @@ const developerTemplate: ResumeTemplate = {
             latex += `  \\end{itemize}
 
 `;
+        }
+
+        // Custom Sections
+        if (data.customSections && data.customSections.length > 0) {
+            data.customSections.forEach((section) => {
+                latex += `\\section{${escapeLaTeX(section.title)}}
+  \\begin{itemize}
+`;
+                section.items.forEach((item) => {
+                    if (item.trim()) {
+                        latex += `    \\item\\small{${escapeLaTeX(item)}}\n`;
+                    }
+                });
+                latex += `  \\end{itemize}
+
+`;
+            });
         }
 
         latex += `\\end{document}`;

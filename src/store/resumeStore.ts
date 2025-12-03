@@ -10,6 +10,7 @@ import {
   ProjectItem,
   CertificationItem,
   LanguageItem,
+  CustomSection,
   EditSource,
 } from '../types/resume';
 
@@ -20,6 +21,7 @@ const createDefaultResumeData = (): ResumeData => ({
     phone: '',
     location: '',
     summary: '',
+    profiles: [],
   },
   experience: [],
   education: [],
@@ -27,6 +29,7 @@ const createDefaultResumeData = (): ResumeData => ({
   projects: [],
   certifications: [],
   languages: [],
+  customSections: [],
 });
 
 interface ResumeStore {
@@ -37,6 +40,9 @@ interface ResumeStore {
   settings: EditorSettings;
   currentTab: 'templates' | 'visual' | 'code' | 'preview';
   resumeId: string | null;
+  recompileTrigger: number;
+
+  triggerRecompile: () => void;
 
   setResumeData: (data: ResumeData, source?: EditSource) => void;
   setLatexCode: (code: string, source?: EditSource) => void;
@@ -73,6 +79,10 @@ interface ResumeStore {
   updateLanguage: (id: string, item: Partial<LanguageItem>) => void;
   deleteLanguage: (id: string) => void;
 
+  addCustomSection: (item: Omit<CustomSection, 'id'>) => void;
+  updateCustomSection: (id: string, item: Partial<CustomSection>) => void;
+  deleteCustomSection: (id: string) => void;
+
   resetResume: () => void;
 }
 
@@ -101,6 +111,9 @@ export const useResumeStore = create<ResumeStore>((set) => ({
   },
   currentTab: 'visual',
   resumeId: null,
+  recompileTrigger: 0,
+
+  triggerRecompile: () => set((state) => ({ recompileTrigger: state.recompileTrigger + 1 })),
 
   setResumeData: (data, source = 'visual') =>
     set((state) => ({
@@ -428,6 +441,50 @@ export const useResumeStore = create<ResumeStore>((set) => ({
       resumeData: {
         ...state.resumeData,
         languages: state.resumeData.languages.filter((lang) => lang.id !== id),
+      },
+      syncMetadata: {
+        ...state.syncMetadata,
+        lastEditedBy: 'visual',
+        lastSyncTime: Date.now(),
+        isDirty: true,
+      },
+    })),
+
+  addCustomSection: (item) =>
+    set((state) => ({
+      resumeData: {
+        ...state.resumeData,
+        customSections: [...state.resumeData.customSections, { ...item, id: generateId() }],
+      },
+      syncMetadata: {
+        ...state.syncMetadata,
+        lastEditedBy: 'visual',
+        lastSyncTime: Date.now(),
+        isDirty: true,
+      },
+    })),
+
+  updateCustomSection: (id, item) =>
+    set((state) => ({
+      resumeData: {
+        ...state.resumeData,
+        customSections: state.resumeData.customSections.map((section) =>
+          section.id === id ? { ...section, ...item } : section
+        ),
+      },
+      syncMetadata: {
+        ...state.syncMetadata,
+        lastEditedBy: 'visual',
+        lastSyncTime: Date.now(),
+        isDirty: true,
+      },
+    })),
+
+  deleteCustomSection: (id) =>
+    set((state) => ({
+      resumeData: {
+        ...state.resumeData,
+        customSections: state.resumeData.customSections.filter((section) => section.id !== id),
       },
       syncMetadata: {
         ...state.syncMetadata,
