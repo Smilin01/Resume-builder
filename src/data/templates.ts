@@ -424,13 +424,13 @@ ${escapeLaTeX(personalInfo.summary)}
         // Skills
         if (skills.length > 0) {
             latex += `\\section{Skills}
-\\begin{tabularx}{\\linewidth}{@{}l X@{}}
+\\begin{itemize}[leftmargin=*, label={}]
 `;
             skills.forEach((skill) => {
-                latex += `${escapeLaTeX(skill.category)} & \\normalsize{${skill.skills.map(escapeLaTeX).join(', ')}} \\\\
+                latex += `\\item \\textbf{${escapeLaTeX(skill.category)}:} ${skill.skills.map(escapeLaTeX).join(', ')}
 `;
             });
-            latex += `\\end{tabularx}
+            latex += `\\end{itemize}
 
 `;
         }

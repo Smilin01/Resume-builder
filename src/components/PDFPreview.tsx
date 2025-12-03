@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { useResumeStore } from '../store/resumeStore';
 import { Loader2, ZoomIn, ZoomOut, Maximize2, RotateCcw, RefreshCw } from 'lucide-react';
@@ -10,6 +10,11 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 export function PDFPreview() {
   const { pdfState, settings, setSettings, latexCode, triggerRecompile } = useResumeStore();
   const isDark = settings.theme === 'dark';
+  const [numPages, setNumPages] = useState<number | null>(null);
+
+  function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
+    setNumPages(numPages);
+  }
 
   // Keyboard shortcuts for zoom
   useEffect(() => {
@@ -263,6 +268,7 @@ export function PDFPreview() {
         <div className="flex flex-col items-center">
           <Document
             file={pdfState.url}
+            onLoadSuccess={onDocumentLoadSuccess}
             loading={
               <div className="text-center">
                 <Loader2 className="h-8 w-8 animate-spin mx-auto" />
@@ -274,15 +280,18 @@ export function PDFPreview() {
               </div>
             }
           >
-            <Page
-              pageNumber={1}
-              scale={(settings.zoomLevel / 100) * 1.5}
-              devicePixelRatio={window.devicePixelRatio || 2}
-              renderTextLayer={true}
-              renderAnnotationLayer={true}
-              renderMode="canvas"
-              className="shadow-lg transition-transform duration-200"
-            />
+            {Array.from(new Array(numPages), (el, index) => (
+              <Page
+                key={`page_${index + 1}`}
+                pageNumber={index + 1}
+                scale={(settings.zoomLevel / 100) * 1.5}
+                devicePixelRatio={window.devicePixelRatio || 2}
+                renderTextLayer={true}
+                renderAnnotationLayer={true}
+                renderMode="canvas"
+                className="shadow-lg transition-transform duration-200 mb-4 last:mb-0"
+              />
+            ))}
           </Document>
         </div>
       </div>

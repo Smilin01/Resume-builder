@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useResumeStore } from '../store/resumeStore';
 import { templates } from '../data/templates';
@@ -11,20 +12,27 @@ import {
     Sun,
     ChevronLeft,
     ChevronRight,
-    LayoutTemplate
+    LayoutTemplate,
+    Sparkles
 } from 'lucide-react';
 import { VisualEditor } from './VisualEditor';
 import { CodeEditor } from './CodeEditor';
 import { PDFPreview } from './PDFPreview';
 import { ToastContainer, useToast } from './Toast';
+import { TemplateSelector } from './TemplateSelector';
+import { AIBuilderModal } from './AIBuilder/AIBuilderModal';
+import { AIAssistant } from './AIAssistant/AIAssistant';
 
 type EditorMode = 'visual' | 'code';
+type ViewMode = 'editor' | 'templates';
 
 export function ModernLayout() {
     const { settings, setSettings, pdfState, resumeData, setResumeData, setLatexCode } = useResumeStore();
     const { toasts, showToast, removeToast } = useToast();
     const [editorMode, setEditorMode] = useState<EditorMode>('visual');
+    const [activeView, setActiveView] = useState<ViewMode>('editor');
     const [previewCollapsed, setPreviewCollapsed] = useState(false);
+    const [showAIBuilder, setShowAIBuilder] = useState(false);
     const isDark = settings.theme === 'dark';
 
     const toggleTheme = () => {
@@ -34,6 +42,12 @@ export function ModernLayout() {
     const handleTemplateChange = (templateId: string) => {
         const template = templates.find(t => t.id === templateId);
         if (!template) return;
+
+        // If clicking the already selected template, just go back to editor
+        if (settings.template === templateId) {
+            setActiveView('editor');
+            return;
+        }
 
         const hasData = resumeData.personalInfo.name.trim() !== '';
         let shouldLoadDummyData = false;
@@ -59,6 +73,9 @@ export function ModernLayout() {
             setLatexCode(newLatex, 'visual');
             showToast(`Template "${template.name}" applied`, 'success');
         }
+
+        // Automatically switch back to editor to see changes
+        setActiveView('editor');
     };
 
     const handleDownloadPDF = async () => {
@@ -103,67 +120,85 @@ export function ModernLayout() {
         <div className={`h-screen flex flex-col ${isDark ? 'bg-gray-950' : 'bg-gray-50'}`}>
             {/* Top Navigation Bar */}
             <nav className={`h-14 border-b flex items-center justify-between px-4 ${isDark
-                    ? 'bg-gray-900 border-gray-800'
-                    : 'bg-white border-gray-200'
+                ? 'bg-gray-900 border-gray-800'
+                : 'bg-white border-gray-200'
                 }`}>
-                {/* Left: Logo & Template Selector */}
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
+                {/* Left: Logo & Template Navigation */}
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveView('editor')}>
                         <FileText className="h-6 w-6 text-emerald-500" />
                         <span className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                             Resume Builder
                         </span>
                     </div>
 
-                    {/* Template Dropdown */}
-                    <select
-                        value={settings.template}
-                        onChange={(e) => handleTemplateChange(e.target.value)}
-                        className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${isDark
-                                ? 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-750'
-                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                    <div className="h-6 w-px bg-gray-300 dark:bg-gray-700"></div>
+
+                    <button
+                        onClick={() => setActiveView('templates')}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${activeView === 'templates'
+                            ? isDark ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-900'
+                            : isDark ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                             }`}
                     >
-                        {templates.map((template) => (
-                            <option key={template.id} value={template.id}>
-                                {template.name}
-                            </option>
-                        ))}
-                    </select>
+                        <LayoutTemplate className="h-4 w-4" />
+                        Templates
+                    </button>
+
+                    <button
+                        onClick={() => setActiveView('editor')}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${activeView === 'editor'
+                            ? isDark ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-900'
+                            : isDark ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                            }`}
+                    >
+                        <FileText className="h-4 w-4" />
+                        Editor
+                    </button>
+
+                    <button
+                        onClick={() => setShowAIBuilder(true)}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600 shadow-sm`}
+                    >
+                        <Sparkles className="h-4 w-4" />
+                        AI Builder
+                    </button>
                 </div>
 
-                {/* Center: Editor Mode Toggle */}
-                <div className={`flex items-center gap-1 p-1 rounded-lg ${isDark ? 'bg-gray-800' : 'bg-gray-100'
-                    }`}>
-                    <button
-                        onClick={() => setEditorMode('visual')}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${editorMode === 'visual'
+                {/* Center: Editor Mode Toggle (Only visible in Editor view) */}
+                {activeView === 'editor' && (
+                    <div className={`flex items-center gap-1 p-1 rounded-lg ${isDark ? 'bg-gray-800' : 'bg-gray-100'
+                        }`}>
+                        <button
+                            onClick={() => setEditorMode('visual')}
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${editorMode === 'visual'
                                 ? isDark
                                     ? 'bg-emerald-600 text-white shadow-sm'
                                     : 'bg-emerald-500 text-white shadow-sm'
                                 : isDark
                                     ? 'text-gray-400 hover:text-gray-200'
                                     : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                    >
-                        <FileText className="inline h-4 w-4 mr-1.5" />
-                        Visual Editor
-                    </button>
-                    <button
-                        onClick={() => setEditorMode('code')}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${editorMode === 'code'
+                                }`}
+                        >
+                            <FileText className="inline h-4 w-4 mr-1.5" />
+                            Visual
+                        </button>
+                        <button
+                            onClick={() => setEditorMode('code')}
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${editorMode === 'code'
                                 ? isDark
                                     ? 'bg-emerald-600 text-white shadow-sm'
                                     : 'bg-emerald-500 text-white shadow-sm'
                                 : isDark
                                     ? 'text-gray-400 hover:text-gray-200'
                                     : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                    >
-                        <Code2 className="inline h-4 w-4 mr-1.5" />
-                        Code Editor
-                    </button>
-                </div>
+                                }`}
+                        >
+                            <Code2 className="inline h-4 w-4 mr-1.5" />
+                            Code
+                        </button>
+                    </div>
+                )}
 
                 {/* Right: Actions */}
                 <div className="flex items-center gap-2">
@@ -171,10 +206,10 @@ export function ModernLayout() {
                         onClick={handleDownloadPDF}
                         disabled={!pdfState.url || pdfState.isCompiling}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${!pdfState.url || pdfState.isCompiling
-                                ? 'opacity-50 cursor-not-allowed'
-                                : isDark
-                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                    : 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                            ? 'opacity-50 cursor-not-allowed'
+                            : isDark
+                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                : 'bg-emerald-500 hover:bg-emerald-600 text-white'
                             }`}
                         title={
                             pdfState.isCompiling
@@ -185,14 +220,14 @@ export function ModernLayout() {
                         }
                     >
                         <Download className="h-4 w-4" />
-                        Download
+                        <span className="hidden sm:inline">Download</span>
                     </button>
 
                     <button
                         onClick={toggleTheme}
                         className={`p-2 rounded-lg transition-all ${isDark
-                                ? 'hover:bg-gray-800 text-gray-300'
-                                : 'hover:bg-gray-100 text-gray-600'
+                            ? 'hover:bg-gray-800 text-gray-300'
+                            : 'hover:bg-gray-100 text-gray-600'
                             }`}
                         title="Toggle Theme"
                     >
@@ -203,74 +238,94 @@ export function ModernLayout() {
 
             {/* Main Content Area */}
             <div className="flex-1 flex overflow-hidden">
-                {/* Left Panel: Editor */}
-                <div
-                    className={`flex-1 flex flex-col border-r transition-all ${isDark ? 'border-gray-800' : 'border-gray-200'
-                        } ${previewCollapsed ? 'flex-[2]' : ''}`}
-                >
-                    {/* Editor Header */}
-                    <div className={`h-12 border-b flex items-center justify-between px-4 ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-gray-50 border-gray-200'
-                        }`}>
-                        <div className="flex items-center gap-2">
-                            {editorMode === 'visual' ? (
-                                <FileText className="h-4 w-4 text-emerald-500" />
-                            ) : (
-                                <Code2 className="h-4 w-4 text-emerald-500" />
-                            )}
-                            <span className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                {editorMode === 'visual' ? 'Visual Editor' : 'LaTeX Code'}
-                            </span>
-                        </div>
-
-                        <button
-                            onClick={() => setPreviewCollapsed(!previewCollapsed)}
-                            className={`p-1.5 rounded transition-all ${isDark ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-200 text-gray-600'
-                                }`}
-                            title={previewCollapsed ? 'Show Preview' : 'Hide Preview'}
+                {activeView === 'templates' ? (
+                    <TemplateSelector
+                        onSelect={handleTemplateChange}
+                        currentTemplateId={settings.template}
+                        isDark={isDark}
+                    />
+                ) : (
+                    <>
+                        {/* Left Panel: Editor */}
+                        <div
+                            className={`flex-1 flex flex-col border-r transition-all ${isDark ? 'border-gray-800' : 'border-gray-200'
+                                } ${previewCollapsed ? 'flex-[2]' : ''}`}
                         >
-                            {previewCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                        </button>
-                    </div>
-
-                    {/* Editor Content */}
-                    <div className="flex-1 overflow-hidden">
-                        {editorMode === 'visual' ? <VisualEditor /> : <CodeEditor />}
-                    </div>
-                </div>
-
-                {/* Right Panel: PDF Preview */}
-                {!previewCollapsed && (
-                    <div className={`flex-1 flex flex-col ${isDark ? 'bg-gray-900' : 'bg-gray-100'}`}>
-                        {/* Preview Header */}
-                        <div className={`h-12 border-b flex items-center justify-between px-4 ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-gray-50 border-gray-200'
-                            }`}>
-                            <div className="flex items-center gap-2">
-                                <Eye className="h-4 w-4 text-emerald-500" />
-                                <span className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                    PDF Preview
-                                </span>
-                            </div>
-
-                            {pdfState.isCompiling && (
+                            {/* Editor Header */}
+                            <div className={`h-12 border-b flex items-center justify-between px-4 ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-gray-50 border-gray-200'
+                                }`}>
                                 <div className="flex items-center gap-2">
-                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-emerald-500 border-t-transparent"></div>
-                                    <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                                        Compiling...
+                                    {editorMode === 'visual' ? (
+                                        <FileText className="h-4 w-4 text-emerald-500" />
+                                    ) : (
+                                        <Code2 className="h-4 w-4 text-emerald-500" />
+                                    )}
+                                    <span className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                        {editorMode === 'visual' ? 'Visual Editor' : 'LaTeX Code'}
                                     </span>
                                 </div>
-                            )}
+
+                                <button
+                                    onClick={() => setPreviewCollapsed(!previewCollapsed)}
+                                    className={`p-1.5 rounded transition-all ${isDark ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-200 text-gray-600'
+                                        }`}
+                                    title={previewCollapsed ? 'Show Preview' : 'Hide Preview'}
+                                >
+                                    {previewCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                </button>
+                            </div>
+
+                            {/* Editor Content */}
+                            <div className="flex-1 overflow-hidden">
+                                {editorMode === 'visual' ? <VisualEditor /> : <CodeEditor />}
+                            </div>
                         </div>
 
-                        {/* Preview Content */}
-                        <div className="flex-1 overflow-hidden">
-                            <PDFPreview />
-                        </div>
-                    </div>
+                        {/* Right Panel: PDF Preview */}
+                        {!previewCollapsed && (
+                            <div className={`flex-1 flex flex-col ${isDark ? 'bg-gray-900' : 'bg-gray-100'}`}>
+                                {/* Preview Header */}
+                                <div className={`h-12 border-b flex items-center justify-between px-4 ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-gray-50 border-gray-200'
+                                    }`}>
+                                    <div className="flex items-center gap-2">
+                                        <Eye className="h-4 w-4 text-emerald-500" />
+                                        <span className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                            PDF Preview
+                                        </span>
+                                    </div>
+
+                                    {pdfState.isCompiling && (
+                                        <div className="flex items-center gap-2">
+                                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-emerald-500 border-t-transparent"></div>
+                                            <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                                Compiling...
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Preview Content */}
+                                <div className="flex-1 overflow-hidden">
+                                    <PDFPreview />
+                                </div>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 
             {/* Toast Notifications */}
             <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+            {/* AI Builder Modal */}
+            <AIBuilderModal
+                isOpen={showAIBuilder}
+                onClose={() => setShowAIBuilder(false)}
+                isDark={isDark}
+            />
+
+            {/* AI Assistant Chat */}
+            <AIAssistant />
         </div>
     );
 }

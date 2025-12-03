@@ -23,6 +23,7 @@ export function formatDate(date: string, current: boolean = false): string {
 
   try {
     const d = new Date(date);
+    if (isNaN(d.getTime())) return date;
     const month = d.toLocaleDateString('en-US', { month: 'short' });
     const year = d.getFullYear();
     return `${month} ${year}`;
