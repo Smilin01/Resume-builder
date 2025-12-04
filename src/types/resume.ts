@@ -9,6 +9,7 @@ export interface PersonalInfo {
     username: string;
     url: string;
   }[];
+  profileImage?: string;
 }
 
 export interface ExperienceItem {
@@ -105,4 +106,13 @@ export interface EditorSettings {
   autoSaveInterval: number;
   zoomLevel: number;
   template: string;
+}
+
+export interface ResumeTemplate {
+  id: string;
+  name: string;
+  description: string;
+  preview: string;
+  dummyData: ResumeData;
+  generateLaTeX: (data: ResumeData) => string;
 }

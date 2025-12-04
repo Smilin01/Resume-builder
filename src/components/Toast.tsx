@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, AlertCircle, X } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertCircle, X } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'info';
 
@@ -16,7 +16,7 @@ interface ToastContainerProps {
 
 export function ToastContainer({ toasts, onRemove }: ToastContainerProps) {
     return (
-        <div className="fixed bottom-4 right-4 z-50 space-y-2">
+        <div className="fixed bottom-24 right-6 z-50 flex flex-col gap-3 pointer-events-none">
             {toasts.map((toast) => (
                 <ToastNotification
                     key={toast.id}
@@ -45,7 +45,7 @@ function ToastNotification({ toast, onRemove }: ToastNotificationProps) {
     const getIcon = () => {
         switch (toast.type) {
             case 'success':
-                return <CheckCircle className="h-5 w-5 text-green-500" />;
+                return <CheckCircle2 className="h-5 w-5 text-violet-500" />;
             case 'error':
                 return <XCircle className="h-5 w-5 text-red-500" />;
             case 'info':
@@ -53,44 +53,41 @@ function ToastNotification({ toast, onRemove }: ToastNotificationProps) {
         }
     };
 
-    const getBackgroundColor = () => {
+    const getStyles = () => {
         switch (toast.type) {
             case 'success':
-                return 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800';
+                return 'border-violet-100 bg-white/90 dark:bg-gray-900/90 dark:border-violet-900/30 shadow-violet-500/10';
             case 'error':
-                return 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800';
+                return 'border-red-100 bg-white/90 dark:bg-gray-900/90 dark:border-red-900/30 shadow-red-500/10';
             case 'info':
-                return 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800';
-        }
-    };
-
-    const getTextColor = () => {
-        switch (toast.type) {
-            case 'success':
-                return 'text-green-800 dark:text-green-200';
-            case 'error':
-                return 'text-red-800 dark:text-red-200';
-            case 'info':
-                return 'text-blue-800 dark:text-blue-200';
+                return 'border-blue-100 bg-white/90 dark:bg-gray-900/90 dark:border-blue-900/30 shadow-blue-500/10';
         }
     };
 
     return (
         <div
             className={`
-        flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg
-        ${getBackgroundColor()}
-        animate-in slide-in-from-right duration-300
-        min-w-[300px] max-w-md
-      `}
+                pointer-events-auto
+                flex items-start gap-3 px-4 py-3 rounded-2xl border shadow-xl backdrop-blur-md
+                ${getStyles()}
+                animate-in slide-in-from-right-full fade-in duration-300
+                min-w-[320px] max-w-md transform transition-all hover:scale-[1.02]
+            `}
         >
-            {getIcon()}
-            <p className={`flex-1 text-sm font-medium ${getTextColor()}`}>
-                {toast.message}
-            </p>
+            <div className="mt-0.5 shrink-0">
+                {getIcon()}
+            </div>
+            <div className="flex-1">
+                <p className={`text-sm font-medium ${toast.type === 'success' ? 'text-violet-950 dark:text-violet-100' : 'text-gray-900 dark:text-gray-100'}`}>
+                    {toast.type === 'success' ? 'Success' : toast.type === 'error' ? 'Error' : 'Info'}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5 leading-relaxed">
+                    {toast.message}
+                </p>
+            </div>
             <button
                 onClick={() => onRemove(toast.id)}
-                className={`p-1 rounded hover:bg-black/10 transition-colors ${getTextColor()}`}
+                className="shrink-0 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
             >
                 <X className="h-4 w-4" />
             </button>

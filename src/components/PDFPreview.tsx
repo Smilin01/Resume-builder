@@ -264,8 +264,8 @@ export function PDFPreview() {
       </div>
 
       {/* PDF Viewer */}
-      <div className="flex-1 overflow-auto p-8">
-        <div className="flex flex-col items-center">
+      <div className="flex-1 overflow-auto p-8 flex">
+        <div className="m-auto flex flex-col items-center">
           <Document
             file={pdfState.url}
             onLoadSuccess={onDocumentLoadSuccess}

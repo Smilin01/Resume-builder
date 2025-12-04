@@ -1,41 +1,6 @@
-import { ResumeData } from '../types/resume';
-
-export interface ResumeTemplate {
-    id: string;
-    name: string;
-    description: string;
-    preview: string;
-    dummyData: ResumeData;
-    generateLaTeX: (data: ResumeData) => string;
-}
-
-// Helper function to escape LaTeX special characters
-function escapeLaTeX(text: string): string {
-    if (!text) return '';
-    return text
-        .replace(/\\/g, '\\textbackslash{}')
-        .replace(/&/g, '\\&')
-        .replace(/%/g, '\\%')
-        .replace(/\$/g, '\\$')
-        .replace(/#/g, '\\#')
-        .replace(/_/g, '\\_')
-        .replace(/\{/g, '\\{')
-        .replace(/\}/g, '\\}')
-        .replace(/~/g, '\\textasciitilde{}')
-        .replace(/\^/g, '\\textasciicircum{}');
-}
-
-function formatDate(date: string): string {
-    if (!date) return '';
-    try {
-        const d = new Date(date);
-        const month = d.toLocaleDateString('en-US', { month: 'short' });
-        const year = d.getFullYear();
-        return `${month} ${year}`;
-    } catch {
-        return date;
-    }
-}
+import { ResumeData, ResumeTemplate } from '../types/resume';
+import { glacialTemplate } from './glacialTemplate';
+import { escapeLaTeX, formatDate } from '../utils/latexUtils';
 
 // --- Dummy Data Sets ---
 
@@ -654,30 +619,35 @@ const developerTemplate: ResumeTemplate = {
 
 `;
 
-        // Contact Details
+        // Contact Details - Fixed Header Layout
         if (personalInfo.name) {
-            latex += `\\begin{tabular*}{\\textwidth}{l@{\\extracolsep{\\fill}}r}
-  \\textbf{\\Huge ${escapeLaTeX(personalInfo.name)} \\vspace{2pt}} &
-  ${personalInfo.location ? `Location: ${escapeLaTeX(personalInfo.location)}` : ''} \\\\
+            // Name centered at top
+            latex += `\\begin{center}
+  \\textbf{\\Huge ${escapeLaTeX(personalInfo.name)}}
+\\end{center}
+\\vspace{2pt}
+
 `;
 
-            const links = [];
-            if (personalInfo.email) links.push(`Email: \\href{mailto:${escapeLaTeX(personalInfo.email)}}{${escapeLaTeX(personalInfo.email)}}`);
-            if (personalInfo.phone) links.push(`Mobile: ${escapeLaTeX(personalInfo.phone)}`);
+            // Contact information in a single line, centered
+            const contacts = [];
+            if (personalInfo.email) contacts.push(`\\href{mailto:${escapeLaTeX(personalInfo.email)}}{${escapeLaTeX(personalInfo.email)}}`);
+            if (personalInfo.phone) contacts.push(escapeLaTeX(personalInfo.phone));
+            if (personalInfo.location) contacts.push(escapeLaTeX(personalInfo.location));
 
             if (personalInfo.profiles && personalInfo.profiles.length > 0) {
                 personalInfo.profiles.forEach(profile => {
-                    links.push(`${escapeLaTeX(profile.network)}: \\href{${escapeLaTeX(profile.url)}}{${escapeLaTeX(profile.username)}}`);
+                    contacts.push(`\\href{${escapeLaTeX(profile.url)}}{${escapeLaTeX(profile.username || profile.network)}}`);
                 });
             }
 
-            if (links.length > 0) {
-                latex += '  & ' + links.join(' $|$ ') + ' \\\\\n';
-            }
-
-            latex += `\\end{tabular*}
+            if (contacts.length > 0) {
+                latex += `\\begin{center}
+  \\small{${contacts.join(' $|$ ')}}
+\\end{center}
 
 `;
+            }
         }
 
         // Summary
@@ -816,10 +786,822 @@ const developerTemplate: ResumeTemplate = {
     }
 };
 
+// Template 4: Minimalist Tech
+const minimalistTemplate: ResumeTemplate = {
+    id: 'minimalist',
+    name: 'Minimalist Tech',
+    description: 'Clean, distraction-free layout for modern tech roles',
+    preview: '/templates/minimalist-preview.png',
+    dummyData: developerDummyData,
+    generateLaTeX: (data: ResumeData) => {
+        const { personalInfo, experience, education, skills, projects } = data;
+        let latex = `\\documentclass[11pt,a4paper]{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage[empty]{fullpage}
+\\usepackage{titlesec}
+\\usepackage[usenames,dvipsnames]{color}
+\\usepackage{enumitem}
+\\usepackage[hidelinks]{hyperref}
+\\usepackage{fancyhdr}
+\\usepackage{tabularx}
+
+\\pagestyle{fancy}
+\\fancyhf{} 
+\\fancyfoot{}
+\\renewcommand{\\headrulewidth}{0pt}
+\\renewcommand{\\footrulewidth}{0pt}
+
+\\addtolength{\\oddsidemargin}{-0.5in}
+\\addtolength{\\evensidemargin}{-0.5in}
+\\addtolength{\\textwidth}{1in}
+\\addtolength{\\topmargin}{-.5in}
+\\addtolength{\\textheight}{1.0in}
+
+\\urlstyle{same}
+
+\\raggedbottom
+\\raggedright
+\\setlength{\\tabcolsep}{0in}
+
+\\titleformat{\\section}{
+  \\vspace{-4pt}\\scshape\\raggedright\\large
+}{}{0em}{}[\\color{black}\\titlerule \\vspace{-5pt}]
+
+\\begin{document}
+
+`;
+        // Header
+        if (personalInfo.name) {
+            latex += `\\begin{center}
+    \\textbf{\\Huge \\scshape ${escapeLaTeX(personalInfo.name)}} \\\\ \\vspace{1pt}
+    \\small ${escapeLaTeX(personalInfo.phone || '')} $|$ \\href{mailto:${escapeLaTeX(personalInfo.email || '')}}{\\underline{${escapeLaTeX(personalInfo.email || '')}}} $|$ 
+    \\href{${escapeLaTeX(personalInfo.profiles?.[0]?.url || '')}}{\\underline{${escapeLaTeX(personalInfo.profiles?.[0]?.username || 'LinkedIn')}}} $|$
+    \\href{${escapeLaTeX(personalInfo.profiles?.[1]?.url || '')}}{\\underline{${escapeLaTeX(personalInfo.profiles?.[1]?.username || 'GitHub')}}}
+\\end{center}
+`;
+        }
+
+        // Education
+        if (education.length > 0) {
+            latex += `\\section{Education}
+\\resumeSubHeadingListStart
+`;
+            education.forEach(edu => {
+                latex += `\\resumeSubheading
+      {${escapeLaTeX(edu.institution)}}{${escapeLaTeX(edu.location || '')}}
+      {${escapeLaTeX(edu.degree)}}{${formatDate(edu.graduationDate)}}
+`;
+            });
+            latex += `\\resumeSubHeadingListEnd
+`;
+        }
+
+        // Experience
+        if (experience.length > 0) {
+            latex += `\\section{Experience}
+\\resumeSubHeadingListStart
+`;
+            experience.forEach(exp => {
+                latex += `\\resumeSubheading
+      {${escapeLaTeX(exp.jobTitle)}}{${formatDate(exp.startDate)} -- ${exp.current ? 'Present' : formatDate(exp.endDate)}}
+      {${escapeLaTeX(exp.company)}}{${escapeLaTeX(exp.location || '')}}
+      \\resumeItemListStart
+`;
+                exp.bulletPoints.forEach(bp => {
+                    latex += `        \\resumeItem{${escapeLaTeX(bp)}}
+`;
+                });
+                latex += `      \\resumeItemListEnd
+`;
+            });
+            latex += `\\resumeSubHeadingListEnd
+`;
+        }
+
+        // Projects
+        if (projects.length > 0) {
+            latex += `\\section{Projects}
+\\resumeSubHeadingListStart
+`;
+            projects.forEach(proj => {
+                latex += `\\resumeProjectHeading
+      {\\textbf{${escapeLaTeX(proj.name)}} $|$ \\emph{${proj.technologies.map(escapeLaTeX).join(', ')}}}{${proj.link ? `\\href{${escapeLaTeX(proj.link)}}{Link}` : ''}}
+      \\resumeItemListStart
+        \\resumeItem{${escapeLaTeX(proj.description)}}
+      \\resumeItemListEnd
+`;
+            });
+            latex += `\\resumeSubHeadingListEnd
+`;
+        }
+
+        // Skills
+        if (skills.length > 0) {
+            latex += `\\section{Technical Skills}
+\\begin{itemize}[leftmargin=0.15in, label={}]
+    \\small{\\item{
+`;
+            skills.forEach(skill => {
+                latex += `     \\textbf{${escapeLaTeX(skill.category)}}{: ${skill.skills.map(escapeLaTeX).join(', ')}} \\\\
+`;
+            });
+            latex += `    }}
+\\end{itemize}
+`;
+        }
+
+        latex += `\\end{document}`;
+
+        // Add custom commands definition at the start
+        const customCommands = `
+\\newcommand{\\resumeItem}[1]{
+  \\item\\small{
+    {#1 \\vspace{-2pt}}
+  }
+}
+\\newcommand{\\resumeSubheading}[4]{
+  \\vspace{-2pt}\\item
+    \\begin{tabular*}{0.97\\textwidth}[t]{l@{\\extracolsep{\\fill}}r}
+      \\textbf{#1} & #2 \\\\
+      \\textit{\\small#3} & \\textit{\\small #4} \\\\
+    \\end{tabular*}\\vspace{-7pt}
+}
+\\newcommand{\\resumeProjectHeading}[2]{
+    \\item
+    \\begin{tabular*}{0.97\\textwidth}{l@{\\extracolsep{\\fill}}r}
+      \\small#1 & #2 \\\\
+    \\end{tabular*}\\vspace{-7pt}
+}
+\\newcommand{\\resumeSubItem}[1]{\\resumeItem{#1}\\vspace{-4pt}}
+\\renewcommand\\labelitemii{$\\vcenter{\\hbox{\\tiny$\\bullet$}}$}
+\\newcommand{\\resumeSubHeadingListStart}{\\begin{itemize}[leftmargin=0.15in, label={}]}
+\\newcommand{\\resumeSubHeadingListEnd}{\\end{itemize}}
+\\newcommand{\\resumeItemListStart}{\\begin{itemize}}
+\\newcommand{\\resumeItemListEnd}{\\end{itemize}\\vspace{-5pt}}
+`;
+        return latex.replace('\\begin{document}', customCommands + '\\begin{document}');
+    }
+};
+
+
+
+
+
+// Template 7: Creative Modern
+const creativeTemplate: ResumeTemplate = {
+    id: 'creative',
+    name: 'Creative Modern',
+    description: 'Stylish layout with color accents for creative pros',
+    preview: '/templates/creative-preview.png',
+    dummyData: modernDummyData,
+    generateLaTeX: (data: ResumeData) => {
+        const { personalInfo, experience, education, skills } = data;
+        let latex = `\\documentclass[11pt,a4paper]{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage[T1]{fontenc}
+\\usepackage{lato}
+\\usepackage{geometry}
+\\geometry{top=0.6in, bottom=0.6in, left=0.6in, right=0.6in}
+\\usepackage{titlesec}
+\\usepackage{enumitem}
+\\usepackage{xcolor}
+\\usepackage{hyperref}
+
+\\definecolor{accent}{RGB}{139, 92, 246} % Violet accent
+
+\\titleformat{\\section}
+  {\\color{accent}\\Large\\bfseries\\uppercase}
+  {}{0em}
+  {}
+  [\\titlerule]
+
+\\begin{document}
+
+`;
+        // Header
+        if (personalInfo.name) {
+            latex += `\\begin{center}
+    {\\color{accent}\\Huge \\textbf{${escapeLaTeX(personalInfo.name)}}} \\\\[0.2cm]
+    \\small ${escapeLaTeX(personalInfo.location || '')} $\\cdot$ ${escapeLaTeX(personalInfo.phone || '')} $\\cdot$ \\href{mailto:${escapeLaTeX(personalInfo.email || '')}}{${escapeLaTeX(personalInfo.email || '')}}
+\\end{center}
+\\vspace{0.5cm}
+`;
+        }
+
+        // Summary
+        if (personalInfo.summary) {
+            latex += `\\section*{Profile}
+\\vspace{0.2cm}
+${escapeLaTeX(personalInfo.summary)}
+\\vspace{0.5cm}
+`;
+        }
+
+        // Experience
+        if (experience.length > 0) {
+            latex += `\\section*{Experience}
+\\vspace{0.2cm}
+`;
+            experience.forEach(exp => {
+                latex += `\\noindent {\\color{accent}\\textbf{${escapeLaTeX(exp.jobTitle)}}} \\hfill ${formatDate(exp.startDate)} -- ${exp.current ? 'Present' : formatDate(exp.endDate)} \\\\
+\\textbf{${escapeLaTeX(exp.company)}} \\hfill ${escapeLaTeX(exp.location || '')}
+\\begin{itemize}[noitemsep,topsep=0pt]
+`;
+                exp.bulletPoints.forEach(bp => {
+                    latex += `    \\item ${escapeLaTeX(bp)}
+`;
+                });
+                latex += `\\end{itemize}
+\\vspace{0.3cm}
+`;
+            });
+        }
+
+        // Education
+        if (education.length > 0) {
+            latex += `\\section*{Education}
+\\vspace{0.2cm}
+`;
+            education.forEach(edu => {
+                latex += `\\noindent {\\color{accent}\\textbf{${escapeLaTeX(edu.degree)}}} \\\\
+${escapeLaTeX(edu.institution)} \\hfill ${formatDate(edu.graduationDate)}
+\\vspace{0.2cm}
+`;
+            });
+        }
+
+        // Skills
+        if (skills.length > 0) {
+            latex += `\\section*{Skills}
+\\vspace{0.2cm}
+\\begin{itemize}[noitemsep]
+`;
+            skills.forEach(skill => {
+                latex += `\\item \\textbf{${escapeLaTeX(skill.category)}}: ${skill.skills.map(escapeLaTeX).join(', ')}
+`;
+            });
+            latex += `\\end{itemize}
+`;
+        }
+
+        latex += `\\end{document}`;
+        return latex;
+    }
+};
+
+// Template 8: Entry Level
+const entryTemplate: ResumeTemplate = {
+    id: 'entry',
+    name: 'Entry Level',
+    description: 'Optimized for students and fresh graduates',
+    preview: '/templates/entry-preview.png',
+    dummyData: modernDummyData,
+    generateLaTeX: (data: ResumeData) => {
+        const { personalInfo, experience, education, skills, projects } = data;
+        let latex = `\\documentclass[11pt,a4paper]{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage{geometry}
+\\geometry{top=1in, bottom=1in, left=1in, right=1in}
+\\usepackage{titlesec}
+\\usepackage{enumitem}
+\\usepackage{hyperref}
+
+\\titleformat{\\section}
+  {\\large\\bfseries\\uppercase}
+  {}{0em}
+  {}
+  [\\titlerule]
+
+\\begin{document}
+
+`;
+        // Header
+        if (personalInfo.name) {
+            latex += `\\begin{center}
+    {\\Huge \\textbf{${escapeLaTeX(personalInfo.name)}}} \\\\[0.2cm]
+    ${escapeLaTeX(personalInfo.location || '')} \\ \\textbullet \\ ${escapeLaTeX(personalInfo.phone || '')} \\ \\textbullet \\ \\href{mailto:${escapeLaTeX(personalInfo.email || '')}}{${escapeLaTeX(personalInfo.email || '')}}
+\\end{center}
+\\vspace{0.5cm}
+`;
+        }
+
+        // Education (First for Entry Level)
+        if (education.length > 0) {
+            latex += `\\section*{EDUCATION}
+\\vspace{0.2cm}
+`;
+            education.forEach(edu => {
+                latex += `\\noindent \\textbf{${escapeLaTeX(edu.institution)}} \\hfill ${escapeLaTeX(edu.location || '')} \\\\
+${escapeLaTeX(edu.degree)} \\hfill ${formatDate(edu.graduationDate)}
+\\vspace{0.2cm}
+`;
+            });
+        }
+
+        // Skills
+        if (skills.length > 0) {
+            latex += `\\section*{SKILLS}
+\\vspace{0.2cm}
+\\begin{itemize}[noitemsep]
+`;
+            skills.forEach(skill => {
+                latex += `\\item \\textbf{${escapeLaTeX(skill.category)}}: ${skill.skills.map(escapeLaTeX).join(', ')}
+`;
+            });
+            latex += `\\end{itemize}
+\\vspace{0.3cm}
+`;
+        }
+
+        // Projects
+        if (projects.length > 0) {
+            latex += `\\section*{PROJECTS}
+\\vspace{0.2cm}
+`;
+            projects.forEach(proj => {
+                latex += `\\noindent \\textbf{${escapeLaTeX(proj.name)}} \\\\
+${escapeLaTeX(proj.description)}
+\\vspace{0.2cm}
+`;
+            });
+        }
+
+        // Experience
+        if (experience.length > 0) {
+            latex += `\\section*{EXPERIENCE}
+\\vspace{0.2cm}
+`;
+            experience.forEach(exp => {
+                latex += `\\noindent \\textbf{${escapeLaTeX(exp.company)}} \\hfill ${escapeLaTeX(exp.location || '')} \\\\
+\\textit{${escapeLaTeX(exp.jobTitle)}} \\hfill ${formatDate(exp.startDate)} -- ${exp.current ? 'Present' : formatDate(exp.endDate)}
+\\begin{itemize}[noitemsep,topsep=0pt]
+`;
+                exp.bulletPoints.forEach(bp => {
+                    latex += `    \\item ${escapeLaTeX(bp)}
+`;
+                });
+                latex += `\\end{itemize}
+\\vspace{0.3cm}
+`;
+            });
+        }
+
+        latex += `\\end{document}`;
+        return latex;
+    }
+};
+
+// Template 9: Modern Malta
+const maltaTemplate: ResumeTemplate = {
+    id: 'malta',
+    name: 'Modern Malta',
+    description: 'Vibrant layout with colored headers and multi-column sections',
+    preview: '/templates/malta-preview.png',
+    dummyData: modernDummyData,
+    generateLaTeX: (data: ResumeData) => {
+        const { personalInfo, experience, education, skills, projects } = data;
+        let latex = `\\documentclass[a4paper,10pt]{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage[T1]{fontenc}
+\\usepackage{tgheros}
+\\renewcommand*\\familydefault{\\sfdefault}
+\\usepackage[margin=1in, top=0.8in, bottom=0.8in]{geometry}
+\\usepackage{xcolor}
+\\usepackage{titlesec}
+\\usepackage{fontawesome5}
+\\usepackage{hyperref}
+\\usepackage{multicol}
+\\usepackage{enumitem}
+\\usepackage{calc}
+
+\\definecolor{flame}{HTML}{D14900}
+\\definecolor{raisinblack}{HTML}{2D2D2D}
+
+\\titleformat{\\section}{\\Large\\bfseries\\color{flame}\\uppercase}{}{0em}{}[\\color{flame}\\titlerule]
+\\titlespacing*{\\section}{0pt}{12pt}{8pt}
+
+\\newcommand{\\cvsection}[1]{\\section*{#1}}
+
+\\begin{document}
+
+`;
+        // Header
+        if (personalInfo.name) {
+            latex += `{\\Huge\\bfseries\\color{raisinblack} ${escapeLaTeX(personalInfo.name)}} \\\\[0.2cm]
+${personalInfo.summary ? `{\\large\\itshape\\color{raisinblack} ${escapeLaTeX(personalInfo.summary.split('.')[0])}} \\\\[0.3cm]` : ''}
+${personalInfo.summary ? `\\small\\color{raisinblack} ${escapeLaTeX(personalInfo.summary)} \\\\[0.5cm]` : ''}
+
+% Contact Bar
+\\noindent\\colorbox{flame}{\\makebox[\\textwidth][c]{\\color{white}
+    ${personalInfo.email ? `\\faEnvelope\\ ${escapeLaTeX(personalInfo.email)} \\quad` : ''}
+    ${personalInfo.phone ? `\\faPhone\\ ${escapeLaTeX(personalInfo.phone)} \\quad` : ''}
+    ${personalInfo.location ? `\\faMapMarker\\ ${escapeLaTeX(personalInfo.location)} \\quad` : ''}
+    ${personalInfo.profiles?.map(p => `\\faGlobe\\ \\href{${escapeLaTeX(p.url)}}{${escapeLaTeX(p.username)}}`).join(' \\quad ') || ''}
+}}
+\\vspace{0.5cm}
+`;
+        }
+
+        // Skills (Multi-column)
+        if (skills.length > 0) {
+            latex += `\\cvsection{Skills}
+\\begin{multicols}{2}
+\\begin{itemize}[noitemsep,label=\\textbullet]
+`;
+            skills.forEach(skill => {
+                latex += `\\item \\textbf{${escapeLaTeX(skill.category)}}: ${skill.skills.map(escapeLaTeX).join(', ')}
+`;
+            });
+            latex += `\\end{itemize}
+\\end{multicols}
+`;
+        }
+
+        // Education
+        if (education.length > 0) {
+            latex += `\\cvsection{Education}
+`;
+            education.forEach(edu => {
+                latex += `\\noindent \\textbf{${escapeLaTeX(edu.institution)}} \\hfill ${formatDate(edu.graduationDate)} \\\\
+\\textbf{${escapeLaTeX(edu.degree)}} \\hfill ${escapeLaTeX(edu.location || '')}
+\\vspace{0.2cm}
+`;
+            });
+        }
+
+        // Experience
+        if (experience.length > 0) {
+            latex += `\\cvsection{Experience}
+`;
+            experience.forEach(exp => {
+                latex += `\\noindent \\textbf{${escapeLaTeX(exp.jobTitle)}} \\hfill ${formatDate(exp.startDate)} -- ${exp.current ? 'Present' : formatDate(exp.endDate)} \\\\
+\\textbf{${escapeLaTeX(exp.company)}} \\hfill ${escapeLaTeX(exp.location || '')}
+\\begin{itemize}[noitemsep,topsep=0pt]
+`;
+                exp.bulletPoints.forEach(bp => {
+                    latex += `    \\item ${escapeLaTeX(bp)}
+`;
+                });
+                latex += `\\end{itemize}
+\\vspace{0.3cm}
+`;
+            });
+        }
+
+        // Projects
+        if (projects.length > 0) {
+            latex += `\\cvsection{Projects}
+`;
+            projects.forEach(proj => {
+                latex += `\\noindent \\textbf{${escapeLaTeX(proj.name)}} \\\\
+${escapeLaTeX(proj.description)}
+\\vspace{0.2cm}
+`;
+            });
+        }
+
+        latex += `\\end{document}`;
+        return latex;
+    }
+};
+
+
+// Template 10: LuxSleek CV
+const luxSleekDummyData: ResumeData = {
+    personalInfo: {
+        name: 'Guillaume Ouancaux',
+        email: 'wonky.william123@gmail.com',
+        phone: '+352 123 456 789',
+        location: '49 Paddocks Spring, Farthingtonshire SG2 9UD, UK',
+        summary: 'Innovative and passionate data analyst with over 15 years of experience in the chocolate and confectionery industry, seeking to leverage extensive background in data analysis, flavour profiling, and market trends. Proficient in Python programming, I have successfully developed and maintained multiple scalable and efficient software applications.',
+        profiles: [
+            {
+                network: 'GitHub',
+                username: 'github.com/WillyWonka',
+                url: 'https://github.com/WillyWonka'
+            }
+        ],
+    },
+    experience: [
+        {
+            id: '1',
+            jobTitle: 'Senior Data Scientist',
+            company: 'Shockelasrull (Luxembourg)',
+            location: '',
+            startDate: '2021-04-01',
+            endDate: '',
+            current: true,
+            bulletPoints: [
+                'Natural language processing, topic modelling, olfactory analysis, building chained processes, automation of reports.'
+            ]
+        },
+        {
+            id: '2',
+            jobTitle: 'Data Scientist',
+            company: 'Chocky-Facky SA (United Kingdom)',
+            location: '',
+            startDate: '2019-02-01',
+            endDate: '2020-11-01',
+            current: false,
+            bulletPoints: [
+                'Predictive models for consumer taste preferences, market trend analysis, advanced data visualisation, negotiations with stakeholders.'
+            ]
+        },
+        {
+            id: '3',
+            jobTitle: 'Data Analyst',
+            company: 'Chocolate River Factory (France)',
+            location: '',
+            startDate: '2018-02-01',
+            endDate: '2018-12-01',
+            current: false,
+            bulletPoints: [
+                'Data collection processes, extensive research on carbonation levels, collaboration with product development teams.'
+            ]
+        }
+    ],
+    education: [
+        {
+            id: '1',
+            degree: 'Master in Economics',
+            institution: 'University of Sweets and Treats',
+            location: '',
+            graduationDate: '2015-06-01',
+            bulletPoints: [
+                'Mathematical Methods of Economic Analysis.',
+                'Thesis title: The Effect of Beverage Sugar Content on Their Shelf Life.',
+                'Econometric analysis, survival analysis, panel and time-series models.'
+            ]
+        },
+        {
+            id: '2',
+            degree: 'Bachelor of Science in Biology',
+            institution: 'Bolzmann State Technical University',
+            location: '',
+            graduationDate: '2010-06-01',
+            bulletPoints: [
+                'Faculty of Experimental Confectionery.',
+                'Mathematical modelling, numerical methods, mathematical optimisation.'
+            ]
+        }
+    ],
+    skills: [
+        {
+            id: '1',
+            category: 'Technical',
+            skills: ['Python', 'SQL', 'PySpark', 'R', 'Matlab', 'Azure Databricks']
+        },
+        {
+            id: '2',
+            category: 'Office',
+            skills: ['MS Word', 'Excel', 'PowerPoint']
+        },
+        {
+            id: '3',
+            category: 'Soft Skills',
+            skills: ['Communication', 'Team collaboration']
+        }
+    ],
+    projects: [],
+    certifications: [
+        {
+            id: '1',
+            name: 'Stanford introduction to food and health',
+            issuer: 'Coursera',
+            date: '2021-01-01',
+            link: ''
+        }
+    ],
+    languages: [
+        { id: '1', language: 'French', proficiency: 'Professional' },
+        { id: '2', language: 'Luxembourgish', proficiency: 'Basic' },
+        { id: '3', language: 'German', proficiency: 'Basic' },
+        { id: '4', language: 'English', proficiency: 'Native' }
+    ],
+    customSections: [
+        {
+            id: '1',
+            title: 'Hobbies',
+            items: [
+                'Music: imitating birds on the banjo, composing and decomposing (morally).',
+                'Poetry: inventing rhymes, surreal art.',
+                'Miscellaneous: zoology, mycology, trainspotting, 1930s horror films.'
+            ]
+        }
+    ]
+};
+
+const luxSleekTemplate: ResumeTemplate = {
+    id: 'lux-sleek',
+    name: 'LuxSleek CV',
+    description: 'Elegant two-column layout with blue accents',
+    preview: '/templates/lux-sleek-preview.jpg',
+    dummyData: luxSleekDummyData,
+    generateLaTeX: (data: ResumeData) => {
+        const { personalInfo, experience, education, skills, certifications, languages, customSections } = data;
+
+        // Helper to format date as YYYY.MM
+        const formatLuxDate = (dateStr: string) => {
+            if (!dateStr) return '';
+            try {
+                const d = new Date(dateStr);
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                return `${year}.${month}`;
+            } catch {
+                return dateStr;
+            }
+        };
+
+        let latex = `\\documentclass[11pt, a4paper]{article} 
+
+\\usepackage[T1]{fontenc}     
+\\usepackage[utf8]{inputenc}  
+\\usepackage[british]{babel}  
+\\usepackage[left = 0mm, right = 0mm, top = 0mm, bottom = 0mm]{geometry}
+\\usepackage[stretch = 25, shrink = 25, tracking=true, letterspace=30]{microtype}  
+\\usepackage{graphicx}        
+\\usepackage{xcolor}          
+\\usepackage{marvosym}        
+
+\\usepackage{enumitem}        
+\\setlist{parsep = 0pt, topsep = 0pt, partopsep = 1pt, itemsep = 1pt, leftmargin = 6mm}
+
+\\usepackage{FiraSans}        
+\\renewcommand{\\familydefault}{\\sfdefault}
+
+\\definecolor{cvblue}{HTML}{304263}
+
+%%%%%%% USER COMMAND DEFINITIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%
+\\newcommand{\\dates}[1]{\\hfill\\mbox{\\textbf{#1}}} 
+\\newcommand{\\is}{\\par\\vskip.5ex plus .4ex} 
+\\newcommand{\\smaller}[1]{{\\small$\\diamond$\\ #1}}
+\\newcommand{\\headleft}[1]{\\vspace*{3ex}\\textsc{\\textbf{#1}}\\par%
+    \\vspace*{-1.5ex}\\hrulefill\\par\\vspace*{0.7ex}}
+\\newcommand{\\headright}[1]{\\vspace*{2.5ex}\\textsc{\\Large\\color{cvblue}#1}\\par%
+     \\vspace*{-2ex}{\\color{cvblue}\\hrulefill}\\par}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\\usepackage[colorlinks = true, urlcolor = white, linkcolor = white]{hyperref}
+
+\\begin{document}
+
+\\setlength{\\topskip}{0pt}
+\\setlength{\\parindent}{0pt}
+\\setlength{\\parskip}{0pt}
+\\setlength{\\fboxsep}{0pt}
+\\pagestyle{empty}
+\\raggedbottom
+
+\\begin{minipage}[t]{0.33\\textwidth} 
+\\colorbox{cvblue}{\\begin{minipage}[t][5mm][t]{\\textwidth}\\null\\hfill\\null\\end{minipage}}
+
+\\vspace{-.2ex} 
+\\colorbox{cvblue!90}{\\color{white}  
+\\kern0.09\\textwidth\\relax
+\\begin{minipage}[t][293mm][t]{0.82\\textwidth}
+\\raggedright
+\\vspace*{2.5ex}
+
+\\Large ${escapeLaTeX(personalInfo.name)} \\normalsize 
+
+% Placeholder for image if we had one
+% \\null\\hfill\\includegraphics[width=0.65\\textwidth]{oval-transparent.png}\\hfill\\null
+\\vspace*{2.5ex}
+
+\\headleft{Profile}
+${escapeLaTeX(personalInfo.summary)}
+
+\\headleft{Contact details}
+\\small 
+`;
+
+        if (personalInfo.email) latex += `\\MVAt\\ {\\small \\href{mailto:${escapeLaTeX(personalInfo.email)}}{${escapeLaTeX(personalInfo.email)}}} \\\\[0.4ex]\n`;
+        if (personalInfo.phone) latex += `\\Mobilefone\\ ${escapeLaTeX(personalInfo.phone)} \\\\[0.5ex]\n`;
+        personalInfo.profiles?.forEach(p => {
+            latex += `\\Mundus\\ \\href{${escapeLaTeX(p.url)}}{${escapeLaTeX(p.username)}} \\\\[0.1ex]\n`;
+        });
+        if (personalInfo.location) latex += `\\Letter\\ ${escapeLaTeX(personalInfo.location)}\n`;
+
+        latex += `\\normalsize
+
+\\headleft{Personal information}
+`;
+        // Mapping languages to Personal Information section as per template style
+        if (languages && languages.length > 0) {
+            latex += `Languages: \\textbf{${languages.map(l => escapeLaTeX(`${l.language} (${l.proficiency})`)).join(', ')}} \\\\[0.5ex]\n`;
+        }
+
+        // Add custom sections that might fit in the left column (short ones)
+        // For now, we'll put Skills here as per template
+        if (skills.length > 0) {
+            latex += `
+\\headleft{Skills}
+\\begin{itemize}
+`;
+            skills.forEach(skillGroup => {
+                // Flatten skills for this template or list them by category?
+                // Template uses simple itemize. Let's list all skills.
+                skillGroup.skills.forEach(skill => {
+                    latex += `\\item ${escapeLaTeX(skill)}\n`;
+                });
+            });
+            latex += `\\end{itemize} 
+`;
+        }
+
+        latex += `
+\\end{minipage}%
+\\kern0.09\\textwidth\\relax
+}
+\\end{minipage}% Right column
+\\hskip2.5em% Left margin for the white area
+\\begin{minipage}[t]{0.56\\textwidth}
+\\setlength{\\parskip}{0.8ex}
+
+\\vspace{2ex}
+
+`;
+
+        // Experience
+        if (experience.length > 0) {
+            latex += `\\headright{Experience}\n\n`;
+            experience.forEach((exp, index) => {
+                if (index > 0) latex += `\\is\n`;
+                const dateRange = `${formatLuxDate(exp.startDate)}--${exp.current ? 'pres.' : formatLuxDate(exp.endDate)}`;
+                latex += `\\textsc{${escapeLaTeX(exp.jobTitle)}} at \\textit{${escapeLaTeX(exp.company)}}.  \\dates{${dateRange}} \\\\
+`;
+                if (exp.bulletPoints && exp.bulletPoints.length > 0) {
+                    latex += `\\smaller{${exp.bulletPoints.map(escapeLaTeX).join(' ')}}
+`;
+                }
+            });
+        }
+
+        // Education
+        if (education.length > 0) {
+            latex += `\n\\headright{Education}\n\n`;
+            education.forEach((edu, index) => {
+                if (index > 0) latex += `\\is\n`;
+                const dateRange = `${formatLuxDate(edu.graduationDate).split('.')[0]}--${formatLuxDate(edu.graduationDate).split('.')[0]}`; // Just years for education usually
+                latex += `\\textsc{${escapeLaTeX(edu.degree)}.} ${escapeLaTeX(edu.institution)}. \\dates{${dateRange}} \\\\
+`;
+                if (edu.bulletPoints && edu.bulletPoints.length > 0) {
+                    edu.bulletPoints.forEach(bp => {
+                        latex += `\\smaller{${escapeLaTeX(bp)}} \\\\
+`;
+                    });
+                }
+            });
+        }
+
+        // Certifications as Additional Education
+        if (certifications.length > 0) {
+            latex += `\n\\headright{Additional education}\n\n`;
+            certifications.forEach((cert, index) => {
+                if (index > 0) latex += `\\is\n`;
+                const dateStr = cert.date ? formatLuxDate(cert.date).split('.')[0] : '';
+                latex += `\\textsc{${escapeLaTeX(cert.name)}.}
+\\textit{${escapeLaTeX(cert.issuer)}}. \\dates{${dateStr}} \\\\
+`;
+            });
+        }
+
+        // Custom Sections (Hobbies etc)
+        if (customSections && customSections.length > 0) {
+            customSections.forEach(section => {
+                latex += `\n\\headright{${escapeLaTeX(section.title)}}\n\n`;
+                section.items.forEach(item => {
+                    // Try to split by colon for bolding prefix if it exists
+                    if (item.includes(':')) {
+                        const [prefix, content] = item.split(':');
+                        latex += `\\textit{${escapeLaTeX(prefix)}:} ${escapeLaTeX(content.substring(1))}\n\n`;
+                    } else {
+                        latex += `${escapeLaTeX(item)}\n\n`;
+                    }
+                });
+            });
+        }
+
+        latex += `\\end{minipage}
+
+\\end{document}
+`;
+        return latex;
+    }
+};
+
 export const templates: ResumeTemplate[] = [
     classicTemplate,
     modernCompactTemplate,
     developerTemplate,
+    minimalistTemplate,
+
+    creativeTemplate,
+    entryTemplate,
+    maltaTemplate,
+    luxSleekTemplate,
+    glacialTemplate,
 ];
 
 export function getTemplateById(id: string): ResumeTemplate | undefined {

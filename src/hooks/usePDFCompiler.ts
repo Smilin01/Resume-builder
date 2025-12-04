@@ -49,16 +49,31 @@ export function usePDFCompiler() {
     try {
       setPdfState({ isCompiling: true, errors: [], compilationTime: undefined });
 
+      // Get resume data to check for profile image
+      const resumeData = useResumeStore.getState().resumeData;
+      const resources: any[] = [
+        {
+          main: true,
+          content: latex,
+          path: 'resume.tex'
+        }
+      ];
+
+      // If there's a profile image, add it as a resource
+      if (resumeData.personalInfo.profileImage) {
+        const base64Data = resumeData.personalInfo.profileImage.split(',')[1];
+        if (base64Data) {
+          resources.push({
+            path: 'profile.jpg',
+            file: base64Data
+          });
+        }
+      }
+
       // Prepare request body for YtoTech API
       const requestBody = {
-        compiler: 'pdflatex', // Default compiler, can be made configurable later
-        resources: [
-          {
-            main: true,
-            content: latex,
-            path: 'resume.tex'
-          }
-        ]
+        compiler: 'pdflatex',
+        resources
       };
 
       const response = await fetch(LATEX_API_URL, {
