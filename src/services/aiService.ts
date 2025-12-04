@@ -4,6 +4,71 @@ import { generateLaTeXFromData } from '../utils/latexConverter';
 const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
+// AI Models with fallback support (tries in order if one fails)
+const AI_MODELS = [
+    'qwen/qwen3-coder:free',                  // Primary: Qwen3 coder (fast and good for code)
+    'openai/gpt-4o-mini-2024-07-18:free',     // Fallback 1: OpenAI GPT-4o mini (reliable)
+    'qwen/qwen-2.5-coder-32b-instruct:free',  // Fallback 2: Qwen 2.5 (alternative)
+];
+
+// Debug: Check if API key is loaded
+if (!API_KEY) {
+    console.error('❌ VITE_OPENROUTER_API_KEY is not set!');
+    console.error('Please check your .env file and restart the dev server.');
+} else {
+    console.log('✅ API Key loaded successfully (length:', API_KEY.length, ')');
+}
+
+// Helper function to try multiple models with fallback
+async function callAIWithFallback(messages: any[], temperature: number = 0.7): Promise<any> {
+    let lastError: Error | null = null;
+
+    for (let i = 0; i < AI_MODELS.length; i++) {
+        const model = AI_MODELS[i];
+        try {
+            console.log(`🤖 Trying model ${i + 1}/${AI_MODELS.length}: ${model}`);
+
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${API_KEY}`,
+                    'Content-Type': 'application/json',
+                    'HTTP-Referer': 'http://localhost:5173',
+                    'X-Title': 'Resume Builder AI',
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: messages,
+                    temperature: temperature,
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                const errorMsg = errorData.error?.message || response.statusText;
+                console.warn(`⚠️ Model ${model} failed: ${errorMsg}`);
+                throw new Error(`AI API Error: ${errorMsg}`);
+            }
+
+            const result = await response.json();
+            console.log(`✅ Success with model: ${model}`);
+            return result;
+
+        } catch (error) {
+            lastError = error as Error;
+            console.warn(`⚠️ Model ${model} failed, trying next...`);
+
+            // If this is the last model, throw the error
+            if (i === AI_MODELS.length - 1) {
+                throw lastError;
+            }
+            // Otherwise, continue to next model
+        }
+    }
+
+    throw lastError || new Error('All AI models failed');
+}
+
 export async function generateResumeWithAI(data: Partial<ResumeData>, templateId: string): Promise<{ data: ResumeData, latex: string }> {
     // Template-specific descriptions and page sizes
     const templateInfo: Record<string, { description: string, pageSize: string }> = {
@@ -98,36 +163,16 @@ export async function generateResumeWithAI(data: Partial<ResumeData>, templateId
   `;
 
     try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${API_KEY}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'http://localhost:5173',
-                'X-Title': 'Resume Builder AI',
+        const result = await callAIWithFallback([
+            {
+                role: 'system',
+                content: 'You are a helpful assistant that enhances resume content and returns valid JSON.'
             },
-            body: JSON.stringify({
-                model: 'qwen/qwen-2.5-coder-32b-instruct:free',
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'You are a helpful assistant that enhances resume content and returns valid JSON.'
-                    },
-                    {
-                        role: 'user',
-                        content: prompt
-                    }
-                ],
-                temperature: 0.7,
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`AI API Error: ${errorData.error?.message || response.statusText}`);
-        }
-
-        const result = await response.json();
+            {
+                role: 'user',
+                content: prompt
+            }
+        ], 0.7);
         let content = result.choices[0].message.content;
 
         // Enhanced cleanup: Remove markdown code blocks and extract JSON
@@ -207,36 +252,16 @@ export async function updateResumeWithAI(currentLatex: string, userRequest: stri
     `;
 
     try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${API_KEY}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'http://localhost:5173',
-                'X-Title': 'Resume Builder AI',
+        const result = await callAIWithFallback([
+            {
+                role: 'system',
+                content: 'You are a helpful assistant that modifies LaTeX code.'
             },
-            body: JSON.stringify({
-                model: 'qwen/qwen-2.5-coder-32b-instruct:free',
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'You are a helpful assistant that modifies LaTeX code.'
-                    },
-                    {
-                        role: 'user',
-                        content: prompt
-                    }
-                ],
-                temperature: 0.3, // Lower temperature for more deterministic code edits
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`AI API Error: ${errorData.error?.message || response.statusText}`);
-        }
-
-        const result = await response.json();
+            {
+                role: 'user',
+                content: prompt
+            }
+        ], 0.3); // Lower temperature for more deterministic code edits
         let content = result.choices[0].message.content;
 
         // Enhanced cleanup: Remove markdown code blocks and extract LaTeX
