@@ -35,7 +35,7 @@ Before deploying, you MUST add your API key as an environment variable:
 2. Click **"Add environment variables"** or **"New variable"**
 3. Add the following:
    - **Key**: `VITE_OPENROUTER_API_KEY`
-   - **Value**: `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`
+   - **Value**: ``
    
    ⚠️ **Important**: The variable name MUST start with `VITE_` for Vite to expose it to the browser.
 
