@@ -233,7 +233,7 @@ export const glacialTemplate: ResumeTemplate = {
             
             \\vspace{0.05cm}
             \\begin{itemize}[leftmargin=*, nosep, itemsep=1pt, topsep=2pt]
-                ${exp.bulletPoints.map(bp => `\\item \\footnotesize ${escapeLaTeX(bp)}`).join('\n')}
+                ${(exp.bulletPoints || []).map(bp => `\\item \\footnotesize ${escapeLaTeX(bp)}`).join('\n')}
             \\end{itemize}
         \\end{minipage}
         \\vspace{0.2cm}

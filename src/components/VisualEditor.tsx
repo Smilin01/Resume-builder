@@ -343,7 +343,7 @@ export function VisualEditor() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <input
-                      type="month"
+                      type="text"
                       value={exp.startDate}
                       onChange={(e) => updateExperience(exp.id, { startDate: e.target.value })}
                       placeholder="Start Date"
@@ -354,7 +354,7 @@ export function VisualEditor() {
                     />
                     <div className="flex items-center gap-2">
                       <input
-                        type="month"
+                        type="text"
                         value={exp.endDate}
                         onChange={(e) => updateExperience(exp.id, { endDate: e.target.value })}
                         disabled={exp.current}
@@ -490,7 +490,7 @@ export function VisualEditor() {
                         }`}
                     />
                     <input
-                      type="month"
+                      type="text"
                       value={edu.graduationDate}
                       onChange={(e) => updateEducation(edu.id, { graduationDate: e.target.value })}
                       placeholder="Graduation Date"

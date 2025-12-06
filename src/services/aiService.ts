@@ -1,37 +1,75 @@
 import { ResumeData } from '../types/resume';
 import { generateLaTeXFromData } from '../utils/latexConverter';
 
-const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
-const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const POLLINATIONS_API_URL = 'https://text.pollinations.ai/openai/chat/completions';
 
-// AI Models with fallback support (tries in order if one fails)
-const AI_MODELS = [
-    'qwen/qwen3-coder:free',                  // Primary: Qwen3 coder (fast and good for code)
-    'openai/gpt-4o-mini-2024-07-18:free',     // Fallback 1: OpenAI GPT-4o mini (reliable)
-    'qwen/qwen-2.5-coder-32b-instruct:free',  // Fallback 2: Qwen 2.5 (alternative)
+// AI Models for OpenRouter (Secondary Fallback)
+const OPENROUTER_MODELS = [
+    'qwen/qwen3-coder:free',
+    'qwen/qwen3-235b-a22b:free',
+    'tngtech/deepseek-r1t-chimera:free',
+    'mistralai/mistral-small-3.1-24b-instruct:free',
+    'meta-llama/llama-3.3-70b-instruct:free',
+    'google/gemini-2.0-flash-exp:free',
 ];
 
-// Debug: Check if API key is loaded
-if (!API_KEY) {
-    console.error('❌ VITE_OPENROUTER_API_KEY is not set!');
-    console.error('Please check your .env file and restart the dev server.');
+// Debug: Check if OpenRouter API key is loaded
+if (!OPENROUTER_API_KEY) {
+    console.warn('⚠️ VITE_OPENROUTER_API_KEY is not set! Secondary fallback (OpenRouter) will not work.');
 } else {
-    console.log('✅ API Key loaded successfully (length:', API_KEY.length, ')');
+    console.log('✅ OpenRouter API Key loaded successfully');
 }
 
 // Helper function to try multiple models with fallback
 async function callAIWithFallback(messages: any[], temperature: number = 0.7): Promise<any> {
+    // 1. Try Pollinations AI (Primary)
+    try {
+        console.log('🤖 Trying Primary Provider: Pollinations AI...');
+
+        const response = await fetch(POLLINATIONS_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: 'openai', // Generic model identifier for Pollinations
+                messages: messages,
+                // Pollinations (Azure OpenAI) does not support custom temperature, so we omit it
+            })
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            // Validate response format
+            if (!result.choices || !result.choices[0] || !result.choices[0].message) {
+                throw new Error(`Invalid Pollinations response format: ${JSON.stringify(result)}`);
+            }
+            console.log('✅ Success with Pollinations AI');
+            return result;
+        } else {
+            const errorText = await response.text();
+            console.warn(`⚠️ Pollinations AI failed: ${response.status} ${response.statusText}`, errorText);
+        }
+    } catch (error) {
+        console.warn('⚠️ Pollinations AI error:', error);
+    }
+
+    console.log('🔄 Switching to Secondary Provider: OpenRouter...');
+
+    // 2. Try OpenRouter Models (Secondary)
     let lastError: Error | null = null;
 
-    for (let i = 0; i < AI_MODELS.length; i++) {
-        const model = AI_MODELS[i];
+    for (let i = 0; i < OPENROUTER_MODELS.length; i++) {
+        const model = OPENROUTER_MODELS[i];
         try {
-            console.log(`🤖 Trying model ${i + 1}/${AI_MODELS.length}: ${model}`);
+            console.log(`🤖 Trying OpenRouter model ${i + 1}/${OPENROUTER_MODELS.length}: ${model}`);
 
-            const response = await fetch(API_URL, {
+            const response = await fetch(OPENROUTER_API_URL, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${API_KEY}`,
+                    'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
                     'Content-Type': 'application/json',
                     'HTTP-Referer': 'http://localhost:5173',
                     'X-Title': 'Resume Builder AI',
@@ -51,7 +89,7 @@ async function callAIWithFallback(messages: any[], temperature: number = 0.7): P
             }
 
             const result = await response.json();
-            console.log(`✅ Success with model: ${model}`);
+            console.log(`✅ Success with OpenRouter model: ${model}`);
             return result;
 
         } catch (error) {
@@ -59,14 +97,13 @@ async function callAIWithFallback(messages: any[], temperature: number = 0.7): P
             console.warn(`⚠️ Model ${model} failed, trying next...`);
 
             // If this is the last model, throw the error
-            if (i === AI_MODELS.length - 1) {
+            if (i === OPENROUTER_MODELS.length - 1) {
                 throw lastError;
             }
-            // Otherwise, continue to next model
         }
     }
 
-    throw lastError || new Error('All AI models failed');
+    throw lastError || new Error('All AI models failed (Pollinations and OpenRouter)');
 }
 
 export async function generateResumeWithAI(data: Partial<ResumeData>, templateId: string): Promise<{ data: ResumeData, latex: string }> {
@@ -91,86 +128,66 @@ export async function generateResumeWithAI(data: Partial<ResumeData>, templateId
         pageSize: 'A4 (210mm x 297mm), margins: 1in all sides, 11pt font'
     };
 
-    const prompt = `
-    You are an expert Professional Resume Writer and Career Coach. Your task is to review the provided raw resume data and enhance it to be more professional, impactful, and ATS-friendly.
-
-    **Selected Template:** ${selectedTemplate.description}
-    **Page Specifications:** ${selectedTemplate.pageSize}
-    **Target:** Single page resume that fills 80-95% of the page
+    const systemPrompt = `You are an expert Professional Resume Writer and Career Coach. 
+    Your goal is to review raw resume data and enhance it to be professional, impactful, and ATS-friendly.
     
-    **User Data:**
+    **CRITICAL OUTPUT RULES:**
+    1. You must output ONLY valid JSON.
+    2. Do not include any markdown formatting (no \`\`\`json ... \`\`\`).
+    3. Do not include any conversational text or explanations.
+    4. The JSON structure must match the input exactly.`;
+
+    const userPrompt = `
+    **Task:** Enhance the provided resume data for a single-page resume (80-95% fill).
+
+    **Template Context:**
+    - Style: ${selectedTemplate.description}
+    - Layout: ${selectedTemplate.pageSize}
+
+    **Raw User Data:**
     ${JSON.stringify(data, null, 2)}
 
-    **CRITICAL CONTENT GENERATION RULES:**
+    **Enhancement Instructions:**
+
+    1. **Professional Summary:** 
+       - If missing or weak, create a compelling 2-3 sentence summary highlighting key skills and career focus.
+
+    2. **Handling Missing Experience (CRITICAL):**
+       - If the user has NO experience but HAS projects:
+         * You MAY convert the most significant Project into an "Experience" entry to fill the template section.
+         * **MANDATORY:** If you do this, you MUST provide valid, realistic values for all fields:
+           - **Company:** Use "Personal Project", "Academic Project", or "Freelance".
+           - **Role:** Use "Full Stack Developer", "Project Lead", or "Software Engineer".
+           - **Location:** Use "Remote", "Campus", or the user's city.
+           - **Date:** Use a valid range (e.g., "Jan 2023 - Present"). **NEVER output "Invalid Date"**.
+       - If the user has experience, ensure 3-4 strong bullet points per role with action verbs.
+
+    3. **Project Descriptions:** 
+       - Expand to 2-3 sentences focusing on technologies, implementation, and business value.
+
+    4. **Certifications:**
+       - **IF present in input:** You MUST include them in the output. Improve descriptions if needed.
+       - **IF missing:** Do NOT hallucinate certifications. However, if the user lists "AWS" in skills, you may add a "Relevant Skills" entry under certifications if the template requires it, or leave it empty.
+
+    5. **Skills:** 
+       - Categorize logically (e.g., Languages, Frameworks, Tools).
+
+    6. **Page Density Strategy:**
+       - **Sparse Content:** Elaborate extensively. Write detailed, multi-sentence bullet points. Add a "Core Competencies" section if needed.
+       - **Dense Content:** Be concise to fit one page.
     
-    1. **Missing Professional Summary:** 
-       - If summary is empty or very short (< 20 words), CREATE a compelling 2-3 sentence professional summary based on the user's experience, education, and skills
-       - Highlight their strongest qualifications and career focus
-       - Example: "Results-driven [Role] with [X] years of experience in [Domain]. Expertise in [Key Skills]. Proven track record of [Achievement Type]."
-
-    2. **Missing Project Descriptions:**
-       - If project description is empty or minimal, GENERATE a professional 1-2 sentence description based on:
-         * Project name (infer purpose from name)
-         * Technologies used
-         * Common use cases for those technologies
-       - Focus on technical implementation and business value
-       - Example: "Developed a scalable web application using React and Node.js, implementing RESTful APIs and real-time features to enhance user engagement by 40%."
-
-    3. **Missing Certification Details:**
-       - If certification lacks description, ADD context about:
-         * What the certification validates
-         * Relevant skills covered
-       - Keep it brief (1 sentence if needed in description field)
-
-    4. **Experience Bullet Points:**
-       - If experience has < 2 bullet points, EXPAND to 3-4 points by:
-         * Adding quantified achievements
-         * Describing key responsibilities
-         * Highlighting technical skills used
-       - Use strong action verbs: Spearheaded, Architected, Optimized, Implemented, Delivered
-
-    5. **PAGE FILLING & DENSITY STRATEGY (CRITICAL):**
-    
-       **SCENARIO A: SPARSE CONTENT (Less than 50% of page):**
-       - **ELABORATE EXTENSIVELY:** Do not be concise. Write detailed, multi-sentence bullet points (2-3 lines each).
-       - **Expand Summary:** Write a robust 4-5 sentence Professional Summary that occupies significant vertical space.
-       - **Add Sections:** Create a "Core Competencies" or "Key Skills" section with categorized lists to fill space.
-       - **Detailed Projects:** For every project, write a 3-4 sentence description explaining the tech stack, challenges, and business outcome.
-       - **Education:** Add "Relevant Coursework", "Academic Projects", or "Achievements" to education entries.
-       - **Goal:** Generate enough text volume to naturally fill the page.
-       
-       **SCENARIO B: MODERATE CONTENT (50-80% of page):**
-       - Maintain a professional balance.
-       - Ensure 3-4 bullet points per experience role.
-       - Keep descriptions clear and impactful.
-       
-       **SCENARIO C: DENSE CONTENT (Over 80% of page):**
-       - Be concise and direct.
-       - Limit bullet points to 2-3 per role.
-       - Focus on high-impact achievements.
-
-    **Formatting Note:**
-    - If the content is still low after elaboration, the system will rely on your expanded text to justify increasing font size and spacing. **PROVIDE VOLUME.**
-
-    **Standard Instructions:**
-    6. **Skills:** Categorize into logical groups (2-4 categories). Examples: "Programming Languages", "Frameworks & Libraries", "Tools & Platforms", "Soft Skills"
-    7. **ATS Optimization:** Include industry keywords and action verbs
-    8. **Formatting:** Clean, professional text. Avoid special characters that break LaTeX
-    9. **Structure:** Return valid JSON matching the input structure exactly
-    10. **CRITICAL:** Output ONLY raw JSON. No markdown formatting (no \`\`\`json ... \`\`\`)
-
-    **Goal:** Create a complete, professional, single-page resume that fills 80-95% of the page with high-impact content. Generate missing content intelligently based on available information.
-  `;
+    **Output:** Return the enhanced JSON data.
+    `;
 
     try {
         const result = await callAIWithFallback([
             {
                 role: 'system',
-                content: 'You are a helpful assistant that enhances resume content and returns valid JSON.'
+                content: systemPrompt
             },
             {
                 role: 'user',
-                content: prompt
+                content: userPrompt
             }
         ], 0.7);
         let content = result.choices[0].message.content;
@@ -196,9 +213,6 @@ export async function generateResumeWithAI(data: Partial<ResumeData>, templateId
         } catch (parseError) {
             console.error('Failed to parse AI JSON response:', parseError);
             console.log('Raw content:', content);
-            console.log('Content length:', content.length);
-            console.log('First 200 chars:', content.substring(0, 200));
-            console.log('Last 200 chars:', content.substring(content.length - 200));
             // Fallback: Use original data if AI response is invalid
             enhancedData = data as ResumeData;
         }
@@ -217,8 +231,17 @@ export async function generateResumeWithAI(data: Partial<ResumeData>, templateId
 }
 
 export async function updateResumeWithAI(currentLatex: string, userRequest: string): Promise<string> {
-    const prompt = `
-    You are an expert LaTeX Resume Editor. Your task is to modify the provided LaTeX code based on the user's specific request.
+    const systemPrompt = `You are an expert LaTeX Resume Developer. 
+    Your goal is to modify LaTeX code based on user requests while maintaining perfect compilation and design integrity.
+    
+    **CRITICAL OUTPUT RULES:**
+    1. Output ONLY valid, compilable LaTeX code.
+    2. Do not include markdown formatting (no \`\`\`latex ... \`\`\`).
+    3. Start directly with \\documentclass or the relevant code block.
+    4. Do not remove sections unless explicitly requested.`;
+
+    const userPrompt = `
+    **Task:** Modify the LaTeX resume based on the user's request.
 
     **User Request:**
     "${userRequest}"
@@ -226,40 +249,24 @@ export async function updateResumeWithAI(currentLatex: string, userRequest: stri
     **Current LaTeX Code:**
     ${currentLatex}
 
-    **Template Layout Guidelines:**
-    - **Classic Template:** Uses centered header with tabularx, serif fonts, traditional sections
-    - **Modern Compact Template:** Uses tight margins (0.8cm), small fonts (10pt), centered header with footnotesize contacts
-    - **Developer Template:** Uses centered name with \\Huge font, centered contact info below with \\small font, blue section headers (RGB 65,105,225), technical focus
+    **Modification Guidelines:**
+    1. **Design:** Maintain the existing template style (Classic/Modern/Developer).
+    2. **Content:** Optimize text for impact and conciseness. Remove "widows" (single words on new lines).
+    3. **Spacing:** Adjust vertical spacing (\\vspace) and margins to ensure the resume fits perfectly on one page.
+    4. **Safety:** Ensure all LaTeX syntax is valid. Escape special characters if adding new text.
 
-    **Instructions:**
-    1. Analyze the user's request and the current LaTeX code.
-    2. Apply the requested changes to the LaTeX code while maintaining the template's design style.
-    3. Ensure the output is valid, compilable LaTeX.
-    4. Do not remove any sections unless explicitly asked.
-    5. **Preserve Header Structure:** Keep the header layout intact (centered name and contact info for Developer template, etc.)
-    6. **"Fit to One Page" Strategy (Balanced Approach):**
-       a. **Optimize Content (Crucial):** Rewrite wordy sentences to be more concise without losing impact. Remove "widows" (single words on a new line).
-       b. **Adjust Margins:** Reduce margins slightly (e.g., top=0.4in, bottom=0.4in).
-       c. **Adjust Spacing:** Reduce vertical spacing using \\vspace{-Xpt} between sections.
-       d. **Font Size:** Change to 10pt only if content optimization and spacing aren't enough.
-       e. **Goal:** The resume should look full and professional, not cramped or empty.
-    7. **"Fill the Page" Strategy (For Low Content):**
-       a. **Elaborate Content:** Rewrite bullet points to be more detailed and verbose.
-       b. **Increase Font Size:** Change document class to \\documentclass[11pt]{article} or even 12pt if content is very sparse.
-       c. **Increase Spacing:** Add \\vspace{5pt} or \\vspace{10pt} between sections and items. Increase \\parskip.
-       d. **Margins:** Increase margins to 1in or 1.25in to reduce white space.
-    8. **CRITICAL:** Output ONLY the raw LaTeX code. Do not include markdown formatting (like \`\`\`latex ... \`\`\`). Start directly with \\documentclass or the first line of the code.
+    **Output:** Return the complete, modified LaTeX code.
     `;
 
     try {
         const result = await callAIWithFallback([
             {
                 role: 'system',
-                content: 'You are a helpful assistant that modifies LaTeX code.'
+                content: systemPrompt
             },
             {
                 role: 'user',
-                content: prompt
+                content: userPrompt
             }
         ], 0.3); // Lower temperature for more deterministic code edits
         let content = result.choices[0].message.content;

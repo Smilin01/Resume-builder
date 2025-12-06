@@ -65,7 +65,7 @@ export function AIBuilderModal({ isOpen, onClose, isDark }: AIBuilderModalProps)
     const [selectedTemplate, setSelectedTemplate] = useState(templates[0].id);
     const [isGenerating, setIsGenerating] = useState(false);
     const [loadingStep, setLoadingStep] = useState(0);
-    const { setResumeData, setLatexCode, triggerRecompile } = useResumeStore();
+    const { setResumeData, setLatexCode, triggerRecompile, setSettings } = useResumeStore();
 
     const { register, control, handleSubmit, formState: { errors } } = useForm<FormData>({
         defaultValues: {
@@ -199,6 +199,7 @@ export function AIBuilderModal({ isOpen, onClose, isDark }: AIBuilderModalProps)
 
             // 2. Update Store with Enhanced Data
             setResumeData(enhancedData, 'visual');
+            setSettings({ template: selectedTemplate });
 
             // 4. Update Latex
             setLatexCode(latex, 'code');
